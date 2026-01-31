@@ -6,6 +6,9 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+// Enable typesafe project accessors. App module can access any other module.
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 rootProject.name = "chirp"
 
 include("app")

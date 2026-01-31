@@ -1,4 +1,4 @@
-// preloaded plugins will be applied to child modules from this project level
+// preloaded plugins will be applied to child modules from this project level including build-logic
 plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.spring) apply false

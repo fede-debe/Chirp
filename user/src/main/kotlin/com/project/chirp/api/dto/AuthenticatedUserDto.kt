@@ -1,0 +1,7 @@
+package org.example.com.project.chirp.api.dto
+
+data class AuthenticatedUserDto(
+    val user: UserDto,
+    val accessToken: String,
+    val refreshToken: String,
+)

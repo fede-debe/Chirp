@@ -1,4 +1,4 @@
-package org.example.com.project.user.domain.model
+package com.project.chirp.domain.model
 
 data class AuthenticatedUser(
     val user: User,

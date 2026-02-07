@@ -25,6 +25,7 @@ import java.util.*
  * @see register: Registers a new user.
  * @see login: Authenticates a user and returns an AuthenticatedUser object.
  * @see refresh: Refreshes an access token using a valid refresh token.
+ * @see logout: Invalidates a refresh token.
  *
  * @param userRepository: Repository for managing user data.
  * @param passwordEncoder: Encoder for hashing passwords.
@@ -152,6 +153,19 @@ class AuthService(
                 refreshToken = newRefreshToken
             )
         } ?: throw UserNotFoundException()
+    }
+
+    /***
+     * Logs out a user by invalidating their refresh token.
+     * @param refreshToken The refresh token to invalidate.
+     * @throws InvalidTokenException If the refresh token is invalid.
+     * @throws UserNotFoundException If the user associated with the refresh token is not found.
+     */
+    @Transactional
+    fun logout(refreshToken: String) {
+        val userId = jwtService.getUserIdFromToken(refreshToken)
+        val hashed = hashToken(refreshToken)
+        refreshTokenRepository.deleteByUserIdAndHashedToken(userId, hashed)
     }
 
     private fun storeRefreshToken(userId: UserId, token: String) {

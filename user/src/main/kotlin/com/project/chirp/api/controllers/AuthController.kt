@@ -57,4 +57,14 @@ class AuthController(private val authService: AuthService) {
             .refresh(body.refreshToken)
             .toAuthenticatedUserDto()
     }
+
+    /*** Logs out a user by invalidating their refresh token.
+     * @RequestBody body: The refresh request containing the refresh token.
+     */
+    @PostMapping("/logout")
+    fun logout(
+        @RequestBody body: RefreshRequest
+    ) {
+        authService.logout(body.refreshToken)
+    }
 }

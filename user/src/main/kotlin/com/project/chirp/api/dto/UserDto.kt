@@ -1,4 +1,4 @@
-package org.example.com.project.chirp.api.dto
+package com.project.chirp.api.dto
 
 import com.project.chirp.domain.model.UserId
 

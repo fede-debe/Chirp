@@ -1,4 +1,4 @@
-package org.example.com.project.chirp.infra.security
+package com.project.chirp.infra.security
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Component

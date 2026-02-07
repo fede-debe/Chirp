@@ -1,9 +1,9 @@
-package org.example.com.project.chirp.api.mappers
+package com.project.chirp.api.mappers
 
+import com.project.chirp.api.dto.AuthenticatedUserDto
+import com.project.chirp.api.dto.UserDto
 import com.project.chirp.domain.model.AuthenticatedUser
 import com.project.chirp.domain.model.User
-import org.example.com.project.chirp.api.dto.AuthenticatedUserDto
-import org.example.com.project.chirp.api.dto.UserDto
 
 /** If implementation details of what the JSON fields name are, for example
  * in UserDto username became username_v2, the domain module would not need

@@ -1,4 +1,4 @@
-package org.example.com.project.chirp.infra.database.mappers
+package com.project.chirp.infra.database.mappers
 
 import com.project.chirp.domain.model.User
 import com.project.chirp.infra.database.entities.UserEntity

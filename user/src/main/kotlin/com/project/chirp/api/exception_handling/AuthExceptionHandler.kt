@@ -1,5 +1,6 @@
 package com.project.chirp.api.exception_handling
 
+import com.project.chirp.domain.exception.InvalidTokenException
 import com.project.chirp.domain.exception.UserAlreadyExistsException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -8,6 +9,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
+/***
+ * Handles exceptions related to authentication and authorization.
+ */
 @RestControllerAdvice
 class AuthExceptionHandler {
 
@@ -17,6 +21,15 @@ class AuthExceptionHandler {
         e: UserAlreadyExistsException
     ) = mapOf(
         "code" to "USER_EXISTS",
+        "message" to e.message
+    )
+
+    @ExceptionHandler(InvalidTokenException::class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    fun onInvalidToken(
+        e: InvalidTokenException
+    ) = mapOf(
+        "code" to "INVALID_TOKEN",
         "message" to e.message
     )
 

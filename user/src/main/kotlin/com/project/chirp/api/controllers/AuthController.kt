@@ -1,7 +1,10 @@
 package com.project.chirp.api.controllers
 
+import com.project.chirp.api.dto.AuthenticatedUserDto
+import com.project.chirp.api.dto.LoginRequest
 import com.project.chirp.api.dto.RegisterRequest
 import com.project.chirp.api.dto.UserDto
+import com.project.chirp.api.mappers.toAuthenticatedUserDto
 import com.project.chirp.api.mappers.toUserDto
 import com.project.chirp.service.auth.AuthService
 import jakarta.validation.Valid
@@ -10,7 +13,11 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-/** This class handles incoming rest requests for authentication*/
+/** This class handles incoming rest requests for authentication
+ *
+ * @see register: Registers a new user.
+ * @see login: Authenticates a user and returns an AuthenticatedUser object.
+ */
 @RestController
 @RequestMapping("/api/auth")
 class AuthController(private val authService: AuthService) {
@@ -21,5 +28,21 @@ class AuthController(private val authService: AuthService) {
         @Valid @RequestBody body: RegisterRequest
     ): UserDto {
         return authService.register(email = body.email, username = body.username, password = body.password).toUserDto()
+    }
+
+    /*** Authenticates a user and returns an AuthenticatedUser object.
+     * @RequestBody body: The login request containing the user's email and password.
+     * @return An AuthenticatedUserDto object containing the user's information, access token, and refresh token.
+     *
+     * business logic is handled by AuthService.login()
+     */
+    @PostMapping("/login")
+    fun login(
+        @RequestBody body: LoginRequest
+    ): AuthenticatedUserDto {
+        return authService.login(
+            email = body.email,
+            password = body.password
+        ).toAuthenticatedUserDto()
     }
 }

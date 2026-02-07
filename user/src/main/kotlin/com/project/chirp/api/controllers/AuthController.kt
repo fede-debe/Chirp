@@ -1,9 +1,6 @@
 package com.project.chirp.api.controllers
 
-import com.project.chirp.api.dto.AuthenticatedUserDto
-import com.project.chirp.api.dto.LoginRequest
-import com.project.chirp.api.dto.RegisterRequest
-import com.project.chirp.api.dto.UserDto
+import com.project.chirp.api.dto.*
 import com.project.chirp.api.mappers.toAuthenticatedUserDto
 import com.project.chirp.api.mappers.toUserDto
 import com.project.chirp.service.auth.AuthService
@@ -44,5 +41,20 @@ class AuthController(private val authService: AuthService) {
             email = body.email,
             password = body.password
         ).toAuthenticatedUserDto()
+    }
+
+    /*** Refreshes an access token using a valid refresh token.
+     * @RequestBody body: The refresh request containing the refresh token.
+     * @return An AuthenticatedUserDto object containing the refreshed access token and refresh token.
+     *
+     * business logic is handled by AuthService.refresh()
+     */
+    @PostMapping("/refresh")
+    fun refresh(
+        @RequestBody body: RefreshRequest
+    ): AuthenticatedUserDto {
+        return authService
+            .refresh(body.refreshToken)
+            .toAuthenticatedUserDto()
     }
 }

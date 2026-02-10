@@ -26,6 +26,9 @@ import java.time.Instant
 @Table(
     name = "email_verification_tokens",
     schema = "user_service",
+    indexes = [
+        Index(name = "idx_email_verification_token_token", columnList = "token")
+    ]
 )
 class EmailVerificationTokenEntity(
     @Id

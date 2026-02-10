@@ -1,9 +1,6 @@
 package com.project.chirp.service.auth
 
-import com.project.chirp.domain.exception.InvalidCredentialsException
-import com.project.chirp.domain.exception.InvalidTokenException
-import com.project.chirp.domain.exception.UserAlreadyExistsException
-import com.project.chirp.domain.exception.UserNotFoundException
+import com.project.chirp.domain.exception.*
 import com.project.chirp.domain.model.AuthenticatedUser
 import com.project.chirp.domain.model.User
 import com.project.chirp.domain.model.UserId
@@ -37,7 +34,8 @@ class AuthService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
     private val jwtService: JwtService,
-    private val refreshTokenRepository: RefreshTokenRepository
+    private val refreshTokenRepository: RefreshTokenRepository,
+    private val emailVerificationService: EmailVerificationService
 ) {
 
     /***
@@ -48,25 +46,27 @@ class AuthService(
      * @return The registered User object.
      * @throws UserAlreadyExistsException If a user with the same email or username already exists.
      */
+    @Transactional
     fun register(email: String, username: String, password: String): User {
+        val trimmedEmail = email.trim()
         val user = userRepository.findByEmailOrUsername(
-            email = email.trim(),
+            email = trimmedEmail,
             username = username.trim()
         )
-        /** Handle error with exception */
         if (user != null) {
             throw UserAlreadyExistsException()
         }
 
-        /** calling save would also upsert the user based on primary id */
-        val savedUser = userRepository.save(
+        /** saveAndFlush is used to persist the entity to the database and return the saved entity while working with transactions */
+        val savedUser = userRepository.saveAndFlush(
             UserEntity(
-                email = email.trim(),
+                email = trimmedEmail,
                 username = username.trim(),
-                hashedPassword = passwordEncoder.encode(password)!!,
-
-                )
+                hashedPassword = passwordEncoder.encode(password)!!
+            )
         ).toUser()
+
+        val token = emailVerificationService.createVerificationToken(trimmedEmail)
 
         return savedUser
     }
@@ -90,7 +90,9 @@ class AuthService(
             throw InvalidCredentialsException()
         }
 
-        // TODO: Check for verified email
+        if (!user.hasVerifiedEmail) {
+            throw EmailNotVerifiedException()
+        }
 
         /*** Ensure that the user has an ID before proceeding on creating tokens */
         return user.id?.let { userId ->

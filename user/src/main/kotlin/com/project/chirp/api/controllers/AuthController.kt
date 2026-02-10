@@ -4,11 +4,9 @@ import com.project.chirp.api.dto.*
 import com.project.chirp.api.mappers.toAuthenticatedUserDto
 import com.project.chirp.api.mappers.toUserDto
 import com.project.chirp.service.auth.AuthService
+import com.project.chirp.service.auth.EmailVerificationService
 import jakarta.validation.Valid
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 /** This class handles incoming rest requests for authentication
  *
@@ -17,7 +15,10 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/api/auth")
-class AuthController(private val authService: AuthService) {
+class AuthController(
+    private val authService: AuthService,
+    private val emailVerificationService: EmailVerificationService
+) {
     /* fun to register a new user.
     * @Valid: spring validation would throw an exception if these fields would not match */
     @PostMapping("/register")
@@ -66,5 +67,15 @@ class AuthController(private val authService: AuthService) {
         @RequestBody body: RefreshRequest
     ) {
         authService.logout(body.refreshToken)
+    }
+
+    /*** Verifies an email verification token for a user.
+     * @RequestParam token: The email verification token to verify.
+     */
+    @GetMapping("/verify")
+    fun verifyEmail(
+        @RequestParam token: String
+    ) {
+        emailVerificationService.verifyEmail(token)
     }
 }

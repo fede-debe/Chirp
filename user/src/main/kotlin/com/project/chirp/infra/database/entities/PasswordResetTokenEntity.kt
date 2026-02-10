@@ -14,6 +14,9 @@ import java.time.Instant
  * @param usedAt The time when the password reset token was used.
  * @param createdAt The creation time of the password reset token.
  *
+ * @property isUsed Indicates whether the password reset token has been used.
+ * @property isExpired Indicates whether the password reset token has expired.
+ *
  */
 @Entity
 @Table(
@@ -38,4 +41,10 @@ class PasswordResetTokenEntity(
     var usedAt: Instant? = null,
     @CreationTimestamp
     var createdAt: Instant = Instant.now(),
-)
+) {
+    val isUsed: Boolean
+        get() = usedAt != null
+
+    val isExpired: Boolean
+        get() = Instant.now() > expiresAt
+}

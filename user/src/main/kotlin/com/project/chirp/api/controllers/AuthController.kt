@@ -5,6 +5,7 @@ import com.project.chirp.api.mappers.toAuthenticatedUserDto
 import com.project.chirp.api.mappers.toUserDto
 import com.project.chirp.service.AuthService
 import com.project.chirp.service.EmailVerificationService
+import com.project.chirp.service.PasswordResetService
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 
@@ -12,13 +13,18 @@ import org.springframework.web.bind.annotation.*
  *
  * @see register: Registers a new user.
  * @see login: Authenticates a user and returns an AuthenticatedUser object.
+ * @see forgotPassword: Requests a password reset for a user.
+ * @see resetPassword: Resets a user's password using a password reset token.
+ * @see changePassword: Changes a user's password.
  */
 @RestController
 @RequestMapping("/api/auth")
 class AuthController(
     private val authService: AuthService,
-    private val emailVerificationService: EmailVerificationService
-) {
+    private val emailVerificationService: EmailVerificationService,
+    private val passwordResetService: PasswordResetService,
+
+    ) {
     /* fun to register a new user.
     * @Valid: spring validation would throw an exception if these fields would not match */
     @PostMapping("/register")
@@ -78,4 +84,40 @@ class AuthController(
     ) {
         emailVerificationService.verifyEmail(token)
     }
+
+    /*** Requests a password reset for a user.
+     * @Valid @RequestBody body: The email request containing the user's email.
+     */
+    @PostMapping("/forgot-password")
+    fun forgotPassword(
+        @Valid @RequestBody body: EmailRequest
+    ) {
+        passwordResetService.requestPasswordReset(body.email)
+    }
+
+    /*** Resets a user's password using a password reset token.
+     * @Valid @RequestBody body: The reset password request containing the token and new password.
+     */
+    @PostMapping("/reset-password")
+    fun resetPassword(
+        @Valid @RequestBody body: ResetPasswordRequest
+    ) {
+        passwordResetService.resetPassword(
+            token = body.token,
+            newPassword = body.newPassword
+        )
+    }
+
+    /*** Changes a user's password.
+     * @Valid @RequestBody body: The change password request containing the old password and new password.
+     * The userId is extracted from the JSON Web Token (JWT) in the Authorization header.
+     * For each authenticated request, the client will attach the JWT with the user ID.
+     */
+    @PostMapping("/change-password")
+    fun changePassword(
+        @Valid @RequestBody body: ChangePasswordRequest
+    ) {
+        // TODO: Extract request user ID and call service
+    }
+
 }

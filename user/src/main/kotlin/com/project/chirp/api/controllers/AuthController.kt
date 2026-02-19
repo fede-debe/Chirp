@@ -1,5 +1,6 @@
 package com.project.chirp.api.controllers
 
+import com.project.chirp.api.config.IpRateLimit
 import com.project.chirp.api.dto.*
 import com.project.chirp.api.mappers.toAuthenticatedUserDto
 import com.project.chirp.api.mappers.toUserDto
@@ -9,6 +10,7 @@ import com.project.chirp.service.EmailVerificationService
 import com.project.chirp.service.PasswordResetService
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
+import java.util.concurrent.TimeUnit
 
 /** This class handles incoming rest requests for authentication
  *
@@ -17,6 +19,9 @@ import org.springframework.web.bind.annotation.*
  * @see forgotPassword: Requests a password reset for a user.
  * @see resetPassword: Resets a user's password using a password reset token.
  * @see changePassword: Changes a user's password.
+ *
+ * @IpRateLimit annotation is used to apply IP-based rate limiting to requests.
+ * The limit is set to 10 requests per hour.
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -27,9 +32,16 @@ class AuthController(
     private val emailRateLimiter: EmailRateLimiter,
 
     ) {
-    /* fun to register a new user.
-    * @Valid: spring validation would throw an exception if these fields would not match */
+
+    /*** Registers a new user.
+     * @Valid @RequestBody body: The registration request containing the user's email, username, and password.
+     */
     @PostMapping("/register")
+    @IpRateLimit(
+        requests = 10,
+        duration = 1L,
+        unit = TimeUnit.HOURS
+    )
     fun register(
         @Valid @RequestBody body: RegisterRequest
     ): UserDto {
@@ -43,6 +55,11 @@ class AuthController(
      * business logic is handled by AuthService.login()
      */
     @PostMapping("/login")
+    @IpRateLimit(
+        requests = 10,
+        duration = 1L,
+        unit = TimeUnit.HOURS
+    )
     fun login(
         @RequestBody body: LoginRequest
     ): AuthenticatedUserDto {
@@ -59,6 +76,11 @@ class AuthController(
      * business logic is handled by AuthService.refresh()
      */
     @PostMapping("/refresh")
+    @IpRateLimit(
+        requests = 10,
+        duration = 1L,
+        unit = TimeUnit.HOURS
+    )
     fun refresh(
         @RequestBody body: RefreshRequest
     ): AuthenticatedUserDto {
@@ -81,6 +103,11 @@ class AuthController(
      * @Valid @RequestBody body: The email request containing the user's email.
      */
     @PostMapping("/resend-verification")
+    @IpRateLimit(
+        requests = 10,
+        duration = 1L,
+        unit = TimeUnit.HOURS
+    )
     fun resendVerification(
         @Valid @RequestBody body: EmailRequest
     ) {
@@ -105,6 +132,11 @@ class AuthController(
      * @Valid @RequestBody body: The email request containing the user's email.
      */
     @PostMapping("/forgot-password")
+    @IpRateLimit(
+        requests = 10,
+        duration = 1L,
+        unit = TimeUnit.HOURS
+    )
     fun forgotPassword(
         @Valid @RequestBody body: EmailRequest
     ) {

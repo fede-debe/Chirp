@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
  * @see onInvalidToken: Handles InvalidTokenException.
  * @see onValidationException: Handles MethodArgumentNotValidException.
  * @see onEmailNotVerified: Handles EmailNotVerifiedException.
+ * @see onRateLimitExceeded: Handle RateLimitException
  */
 @RestControllerAdvice
 class AuthExceptionHandler {
@@ -72,6 +73,15 @@ class AuthExceptionHandler {
         e: SamePasswordException
     ) = mapOf(
         "code" to "SAME_PASSWORD",
+        "message" to e.message
+    )
+
+    @ExceptionHandler(RateLimitException::class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    fun onRateLimitExceeded(
+        e: RateLimitException
+    ) = mapOf(
+        "code" to "RATE_LIMIT_EXCEEDED",
         "message" to e.message
     )
 

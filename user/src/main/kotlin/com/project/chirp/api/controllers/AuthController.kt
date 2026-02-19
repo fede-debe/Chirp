@@ -3,6 +3,7 @@ package com.project.chirp.api.controllers
 import com.project.chirp.api.dto.*
 import com.project.chirp.api.mappers.toAuthenticatedUserDto
 import com.project.chirp.api.mappers.toUserDto
+import com.project.chirp.infra.rate_limiting.EmailRateLimiter
 import com.project.chirp.service.AuthService
 import com.project.chirp.service.EmailVerificationService
 import com.project.chirp.service.PasswordResetService
@@ -23,6 +24,7 @@ class AuthController(
     private val authService: AuthService,
     private val emailVerificationService: EmailVerificationService,
     private val passwordResetService: PasswordResetService,
+    private val emailRateLimiter: EmailRateLimiter,
 
     ) {
     /* fun to register a new user.
@@ -73,6 +75,20 @@ class AuthController(
         @RequestBody body: RefreshRequest
     ) {
         authService.logout(body.refreshToken)
+    }
+
+    /*** Resends an email verification token for a user.
+     * @Valid @RequestBody body: The email request containing the user's email.
+     */
+    @PostMapping("/resend-verification")
+    fun resendVerification(
+        @Valid @RequestBody body: EmailRequest
+    ) {
+        emailRateLimiter.withRateLimit(
+            email = body.email
+        ) {
+            emailVerificationService.resendVerificationEmail(body.email)
+        }
     }
 
     /*** Verifies an email verification token for a user.

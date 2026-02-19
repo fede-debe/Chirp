@@ -24,6 +24,7 @@ import java.time.temporal.ChronoUnit
  * @see createVerificationToken: Creates a new email verification token for a user.
  * @see verifyEmail: Verifies an email verification token for a user.
  * @see cleanupExpiredTokens: Cleans up expired email verification tokens.
+ * @see resendVerificationEmail: Resends an email verification token for a user.
  */
 @Service
 class EmailVerificationService(
@@ -31,6 +32,10 @@ class EmailVerificationService(
     private val userRepository: UserRepository,
     @param:Value("\${chirp.email.verification.expiry-hours}") private val expiryHours: Long
 ) {
+
+    fun resendVerificationEmail(email: String) {
+        // TODO: Trigger resend
+    }
 
     @Transactional
     fun createVerificationToken(email: String): EmailVerificationToken {

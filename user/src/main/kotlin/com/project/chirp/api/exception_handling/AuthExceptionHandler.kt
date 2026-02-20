@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 /***
  * Handles exceptions related to authentication and authorization.
  *
+ * The ExceptionHandler can accept multiple exception types.
+ *
  * @see onUserAlreadyExists: Handles UserAlreadyExistsException.
  * @see onUserNotFound: Handles UserNotFoundException.
  * @see onInvalidCredentials: Handles InvalidCredentialsException.
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
  * @see onValidationException: Handles MethodArgumentNotValidException.
  * @see onEmailNotVerified: Handles EmailNotVerifiedException.
  * @see onRateLimitExceeded: Handle RateLimitException
+ * @see onUnauthorized: Handle UnauthorizedException
  */
 @RestControllerAdvice
 class AuthExceptionHandler {
@@ -64,6 +67,15 @@ class AuthExceptionHandler {
         e: EmailNotVerifiedException
     ) = mapOf(
         "code" to "EMAIL_NOT_VERIFIED",
+        "message" to e.message
+    )
+
+    @ExceptionHandler(UnauthorizedException::class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    fun onUnauthorized(
+        e: UnauthorizedException
+    ) = mapOf(
+        "code" to "UNAUTHORIZED",
         "message" to e.message
     )
 

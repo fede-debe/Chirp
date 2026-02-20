@@ -4,6 +4,7 @@ import com.project.chirp.api.config.IpRateLimit
 import com.project.chirp.api.dto.*
 import com.project.chirp.api.mappers.toAuthenticatedUserDto
 import com.project.chirp.api.mappers.toUserDto
+import com.project.chirp.api.util.requestUserId
 import com.project.chirp.infra.rate_limiting.EmailRateLimiter
 import com.project.chirp.service.AuthService
 import com.project.chirp.service.EmailVerificationService
@@ -29,9 +30,8 @@ class AuthController(
     private val authService: AuthService,
     private val emailVerificationService: EmailVerificationService,
     private val passwordResetService: PasswordResetService,
-    private val emailRateLimiter: EmailRateLimiter,
-
-    ) {
+    private val emailRateLimiter: EmailRateLimiter
+) {
 
     /*** Registers a new user.
      * @Valid @RequestBody body: The registration request containing the user's email, username, and password.
@@ -165,7 +165,10 @@ class AuthController(
     fun changePassword(
         @Valid @RequestBody body: ChangePasswordRequest
     ) {
-        // TODO: Extract request user ID and call service
+        passwordResetService.changePassword(
+            userId = requestUserId,
+            oldPassword = body.oldPassword,
+            newPassword = body.newPassword
+        )
     }
-
 }

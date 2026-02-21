@@ -1,4 +1,4 @@
-package com.project.chirp.chat.domain.models
+package com.project.chirp.domain.models
 
 import com.project.chirp.domain.type.UserId
 

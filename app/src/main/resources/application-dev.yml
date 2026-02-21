@@ -2,6 +2,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+  # Mailgun configuration for development environment
+  mail:
+    host: smtp.mailgun.org
+    username: sandboxdb81cc8bd1004b178d1cfd38d8f5cc74.mailgun.org@sandboxdb81cc8bd1004b178d1cfd38d8f5cc74.mailgun.org
 
 jwt:
   expiration-minutes: 1000

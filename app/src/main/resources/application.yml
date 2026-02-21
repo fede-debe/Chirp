@@ -40,6 +40,16 @@ spring:
         format_sql: true
         show_sql: true
 
+  mail:
+    port: 587
+    password: ${MAILGUN_PASSWORD} # Spring mail will use this password to authenticate with the mail server.
+    properties:
+      mail:
+        SMTP:
+          auth: true
+          STARTTLS:
+            enable: true
+
   rabbitmq:
     host: dog.lmq.cloudamqp.com
     password: ${RABBITMQ_PASSWORD}

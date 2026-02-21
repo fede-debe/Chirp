@@ -1,5 +1,6 @@
 package com.project.chirp.service
 
+import com.project.chirp.domain.events.user.UserEvent
 import com.project.chirp.domain.exception.*
 import com.project.chirp.domain.model.AuthenticatedUser
 import com.project.chirp.domain.model.User
@@ -9,6 +10,7 @@ import com.project.chirp.infra.database.entities.UserEntity
 import com.project.chirp.infra.database.mappers.toUser
 import com.project.chirp.infra.database.repositories.RefreshTokenRepository
 import com.project.chirp.infra.database.repositories.UserRepository
+import com.project.chirp.infra.message_queue.EventPublisher
 import com.project.chirp.infra.security.PasswordEncoder
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -35,7 +37,8 @@ class AuthService(
     private val passwordEncoder: PasswordEncoder,
     private val jwtService: JwtService,
     private val refreshTokenRepository: RefreshTokenRepository,
-    private val emailVerificationService: EmailVerificationService
+    private val emailVerificationService: EmailVerificationService,
+    private val eventPublisher: EventPublisher
 ) {
 
     /***
@@ -67,6 +70,16 @@ class AuthService(
         ).toUser()
 
         val token = emailVerificationService.createVerificationToken(trimmedEmail)
+
+        /** Publishes a UserEvent.Created event for the newly registered user */
+        eventPublisher.publish(
+            event = UserEvent.Created(
+                userId = savedUser.id,
+                email = savedUser.email,
+                username = savedUser.username,
+                verificationToken = token.token
+            )
+        )
 
         return savedUser
     }

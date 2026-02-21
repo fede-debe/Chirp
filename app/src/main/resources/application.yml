@@ -43,10 +43,10 @@ spring:
   rabbitmq:
     host: dog.lmq.cloudamqp.com
     password: ${RABBITMQ_PASSWORD}
-    username: scdnbleq
+    username: niymxvym
     ssl:
       enabled: true
-    virtual-host: scdnbleq
+    virtual-host: niymxvym
     listener:
       simple:
         # acknowledge-mode is what you can use to define how your rabbitmq listeners should handle events.

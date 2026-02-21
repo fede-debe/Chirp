@@ -3,7 +3,7 @@ package com.project.chirp.service
 import com.project.chirp.domain.exception.*
 import com.project.chirp.domain.model.AuthenticatedUser
 import com.project.chirp.domain.model.User
-import com.project.chirp.domain.model.UserId
+import com.project.chirp.domain.type.UserId
 import com.project.chirp.infra.database.entities.RefreshTokenEntity
 import com.project.chirp.infra.database.entities.UserEntity
 import com.project.chirp.infra.database.mappers.toUser

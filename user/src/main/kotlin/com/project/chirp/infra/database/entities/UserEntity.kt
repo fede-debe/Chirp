@@ -1,6 +1,6 @@
 package com.project.chirp.infra.database.entities
 
-import com.project.chirp.domain.model.UserId
+import com.project.chirp.domain.type.UserId
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp

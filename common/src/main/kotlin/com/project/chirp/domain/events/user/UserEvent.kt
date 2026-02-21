@@ -67,14 +67,14 @@ sealed class UserEvent(
      * @param userId: The unique identifier for the user.
      * @param email: The email of the user.
      * @param username: The username of the user.
-     * @param verificationToken: The verification token for the user.
-     * @param expiresInMinutes: The time in minutes until the verification token expires.
+     * @param passwordResetToken: The password reset token for the user.
+     * @param expiresInMinutes: The time in minutes until the password reset token expires.
      */
     data class RequestResetPassword(
         val userId: UserId,
         val email: String,
         val username: String,
-        val verificationToken: String,
+        val passwordResetToken: String,
         val expiresInMinutes: Long,
         override val eventKey: String = UserEventConstants.USER_REQUEST_RESET_PASSWORD
     ) : UserEvent(), ChirpEvent

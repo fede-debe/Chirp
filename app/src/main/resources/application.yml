@@ -39,6 +39,42 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         show_sql: true
+
+  rabbitmq:
+    host: dog.lmq.cloudamqp.com
+    password: ${RABBITMQ_PASSWORD}
+    username: scdnbleq
+    ssl:
+      enabled: true
+    virtual-host: scdnbleq
+    listener:
+      simple:
+        # acknowledge-mode is what you can use to define how your rabbitmq listeners should handle events.
+        # RabbitMQ is also responsible to guarantee delivery of events. If an event fails to be processed, RabbitMQ will automatically requeue it.
+        # auto: Acknowledge messages automatically after they are processed.
+        # manual: Acknowledge messages manually after they are processed.
+        acknowledge-mode: auto
+        # concurrency is the number of threads that will be used to process messages. Limitation from the free plan to use only 1 thread. In production with a paid plan this number can be increased.
+        # max-concurrency is the maximum number of threads that will be used to process messages.
+        # prefetch is the number of messages that will be prefetched from the queue (number of messages that haven't been processed yet).
+        # default-requeue-rejected is whether to requeue messages that are rejected.
+        concurrency: 1
+        max-concurrency: 3
+        prefetch: 10
+        default-requeue-rejected: true
+        # retry is the number of times a message will be retried before being discarded.
+        # enabled true means that retries will be enabled.
+        # initial-interval is the initial time interval between retries.
+        # max-interval is the maximum time interval between retries.
+        # multiplier is the multiplier for the time interval between retries.
+        # max-retries is the maximum number of retries.
+        retry:
+          enabled: true
+          initial-interval: 1000ms
+          max-interval: 10000ms
+          multiplier: 2
+          max-retries: 3
+
 jwt:
   secret: ${JWT_SECRET_BASE64}
 

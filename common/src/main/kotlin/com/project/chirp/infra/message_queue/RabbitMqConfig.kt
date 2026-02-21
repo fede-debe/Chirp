@@ -6,12 +6,14 @@ import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder
 import org.springframework.amqp.core.Queue
 import org.springframework.amqp.core.TopicExchange
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory
 import org.springframework.amqp.rabbit.connection.ConnectionFactory
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.amqp.support.converter.JacksonJavaTypeMapper
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.annotation.EnableTransactionManagement
 import tools.jackson.databind.DefaultTyping
 import tools.jackson.databind.json.JsonMapper
@@ -28,6 +30,7 @@ import tools.jackson.module.kotlin.kotlinModule
  *
  * @see messageConverter: Configures a JacksonJsonMessageConverter for RabbitMQ.
  * @see rabbitTemplate: Configures a RabbitTemplate for RabbitMQ.
+ * @see rabbitListenerContainerFactory: Configures a SimpleRabbitListenerContainerFactory for RabbitMQ.
  * @see userExchange: Configures a TopicExchange for user events. User routing office that handles user-related
  * events and decides where to route them.
  * @see notificationUserEventsQueue: Configures a Queue for notification events related to users, after exchange routing.
@@ -54,6 +57,20 @@ class RabbitMqConfig {
         return JacksonJsonMessageConverter(objectMapper).apply {
             // always trust the type id specified in the serialized message
             typePrecedence = JacksonJavaTypeMapper.TypePrecedence.TYPE_ID
+        }
+    }
+
+    @Bean
+    fun rabbitListenerContainerFactory(
+        connectionFactory: ConnectionFactory,
+        transactionManager: PlatformTransactionManager,
+        messageConverter: JacksonJsonMessageConverter     // <- message converter
+    ): SimpleRabbitListenerContainerFactory {
+        return SimpleRabbitListenerContainerFactory().apply {
+            this.setConnectionFactory(connectionFactory)
+            this.setTransactionManager(transactionManager)
+            this.setChannelTransacted(true)   // <- messaghe converter
+            setMessageConverter(messageConverter)
         }
     }
 

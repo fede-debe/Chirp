@@ -90,6 +90,7 @@ jwt:
 
 chirp:
   email:
+    from: "mail@chirp.com"
     verification:
       expiry-hours: 24
     reset-password:

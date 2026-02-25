@@ -49,7 +49,7 @@ class ChatMessageEntity(
         updatable = false
     )
     var chat: ChatEntity? = null, // default value is null because of Java/Kotlin limitation, if we don't give a default value, the moment we create the ChatMessageEntity, it will expect an actual chat
-    @ManyToOne(fetch = FetchType.LAZY) // one participant can send multiple messages, one message can only be sent by one participant
+    @ManyToOne(fetch = FetchType.EAGER) // we set this to EAGER because we wouldn't need the LEFT JOIN FETCH for sender
     @JoinColumn(
         name = "sender_id",
         nullable = false,

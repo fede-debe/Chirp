@@ -11,4 +11,5 @@ import com.project.chirp.infra.message_queue.MessageQueues.NOTIFICATION_USER_EVE
  */
 object MessageQueues {
     const val NOTIFICATION_USER_EVENTS = "notification.user.events"
+    const val CHAT_USER_EVENTS = "chat.user.events"
 }

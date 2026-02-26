@@ -23,6 +23,9 @@ class ChatParticipantService(
     fun createChatParticipant(
         chatParticipant: ChatParticipant
     ) {
+        if (chatParticipantRepository.existsById(chatParticipant.userId)) return
+        val normalizedEmail = chatParticipant.email.lowercase().trim()
+        if (chatParticipantRepository.findByEmailOrUsername(normalizedEmail) != null) return
         chatParticipantRepository.save(
             chatParticipant.toChatParticipantEntity()
         )

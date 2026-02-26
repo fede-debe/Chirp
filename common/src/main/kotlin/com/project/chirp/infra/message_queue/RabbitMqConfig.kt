@@ -1,6 +1,7 @@
 package com.project.chirp.infra.message_queue
 
 import com.project.chirp.domain.events.ChirpEvent
+import com.project.chirp.domain.events.chat.ChatEventConstants
 import com.project.chirp.domain.events.user.UserEventConstants
 import org.springframework.amqp.core.Binding
 import org.springframework.amqp.core.BindingBuilder
@@ -33,8 +34,12 @@ import tools.jackson.module.kotlin.kotlinModule
  * @see rabbitListenerContainerFactory: Configures a SimpleRabbitListenerContainerFactory for RabbitMQ.
  * @see userExchange: Configures a TopicExchange for user events. User routing office that handles user-related
  * events and decides where to route them.
+ * @see chatExchange: Configures a TopicExchange for chat events. Chat routing office that handles chat-related
+ * events and decides where to route them.
+ * @see chatUserEventsQueue: Configures a Queue for chat events related to users, after exchange routing.
  * @see notificationUserEventsQueue: Configures a Queue for notification events related to users, after exchange routing.
  * @see notificationUserEventsBinding: Configures a Binding for notification events related to users, after exchange routing.
+ * @see chatUserEventsBinding: Configures a Binding for chat events related to users, after exchange routing.
  */
 @Configuration
 @EnableTransactionManagement
@@ -92,6 +97,19 @@ class RabbitMqConfig {
     )
 
     @Bean
+    fun chatExchange() = TopicExchange(
+        ChatEventConstants.CHAT_EXCHANGE,
+        true,
+        false
+    )
+
+    @Bean
+    fun chatUserEventsQueue() = Queue(
+        MessageQueues.CHAT_USER_EVENTS,
+        true
+    )
+
+    @Bean
     fun notificationUserEventsQueue() = Queue(
         MessageQueues.NOTIFICATION_USER_EVENTS,
         true
@@ -104,6 +122,20 @@ class RabbitMqConfig {
     ): Binding {
         return BindingBuilder
             .bind(notificationUserEventsQueue)
+            .to(userExchange)
+            .with("user.*")
+    }
+
+    /***
+     * Configures a Binding for chat events related to users, after exchange routing.
+     */
+    @Bean
+    fun chatUserEventsBinding(
+        chatUserEventsQueue: Queue,
+        userExchange: TopicExchange,
+    ): Binding {
+        return BindingBuilder
+            .bind(chatUserEventsQueue)
             .to(userExchange)
             .with("user.*")
     }

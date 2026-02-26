@@ -93,6 +93,19 @@ class EmailVerificationService(
                 this.hasVerifiedEmail = true
             }
         ).toUser()
+
+        /**
+         * Publishes a UserEvent.Verified event for the user to observe into
+         * the chat module in oder to create a new record of a char participant
+         * in our DB table.
+         */
+        eventPublisher.publish(
+            event = UserEvent.Verified(
+                userId = verificationToken.user.id!!,
+                email = verificationToken.user.email,
+                username = verificationToken.user.username,
+            )
+        )
     }
 
     @Scheduled(cron = "0 0 3 * * *")

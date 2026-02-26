@@ -12,7 +12,7 @@ import org.springframework.data.jpa.repository.Query
  *
  */
 interface ChatParticipantRepository : JpaRepository<ChatParticipantEntity, UserId> {
-    fun findByUserIdIn(userIds: List<UserId>): Set<ChatParticipantEntity>
+    fun findByUserIdIn(userIds: Set<UserId>): Set<ChatParticipantEntity>
 
     // define query because deviate from the format of JpaRepository
     @Query(

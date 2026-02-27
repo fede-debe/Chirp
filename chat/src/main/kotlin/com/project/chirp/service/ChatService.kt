@@ -1,5 +1,7 @@
 package com.project.chirp.service
 
+import com.project.chirp.api.dto.ChatMessageDto
+import com.project.chirp.api.mappers.toChatMessageDto
 import com.project.chirp.domain.exception.ChatNotFoundException
 import com.project.chirp.domain.exception.ChatParticipantNotFoundException
 import com.project.chirp.domain.exception.ForbiddenException
@@ -14,9 +16,11 @@ import com.project.chirp.infra.database.mappers.toChatMessage
 import com.project.chirp.infra.database.repositories.ChatMessageRepository
 import com.project.chirp.infra.database.repositories.ChatParticipantRepository
 import com.project.chirp.infra.database.repositories.ChatRepository
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 
 /***
  * Service for managing chat-related operations.
@@ -30,6 +34,23 @@ class ChatService(
     private val chatParticipantRepository: ChatParticipantRepository,
     private val chatMessageRepository: ChatMessageRepository,
 ) {
+
+    fun getChatMessages(
+        chatId: ChatId,
+        before: Instant?,
+        pageSize: Int
+    ): List<ChatMessageDto> {
+        return chatMessageRepository
+            .findByChatIdBefore(
+                chatId = chatId,
+                before = before ?: Instant.now(),
+                pageable = PageRequest.of(0, pageSize)
+            )
+            .content
+            .asReversed()
+            .map { it.toChatMessage().toChatMessageDto() }
+    }
+
     /***
      * @param creatorId: The ID of the creator of the chat.
      * @param otherUserIds: The IDs of the other participants in the chat.

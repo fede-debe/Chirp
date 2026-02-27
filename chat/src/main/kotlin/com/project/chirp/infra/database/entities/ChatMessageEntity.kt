@@ -4,6 +4,8 @@ import com.project.chirp.domain.type.ChatId
 import com.project.chirp.domain.type.ChatMessageId
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.OnDelete
+import org.hibernate.annotations.OnDeleteAction
 import java.time.Instant
 
 /***
@@ -48,6 +50,7 @@ class ChatMessageEntity(
         insertable = false,
         updatable = false
     )
+    @OnDelete(action = OnDeleteAction.CASCADE) // if a chat is deleted, all its messages will also be deleted
     var chat: ChatEntity? = null, // default value is null because of Java/Kotlin limitation, if we don't give a default value, the moment we create the ChatMessageEntity, it will expect an actual chat
     @ManyToOne(fetch = FetchType.EAGER) // we set this to EAGER because we wouldn't need the LEFT JOIN FETCH for sender
     @JoinColumn(
@@ -56,7 +59,7 @@ class ChatMessageEntity(
         insertable = false,
         updatable = false
     )
-    var sender: ChatParticipantEntity? = null,
+    var sender: ChatParticipantEntity,
     @CreationTimestamp
     var createdAt: Instant = Instant.now()
 )

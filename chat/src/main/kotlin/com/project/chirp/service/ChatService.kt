@@ -2,6 +2,8 @@ package com.project.chirp.service
 
 import com.project.chirp.api.dto.ChatMessageDto
 import com.project.chirp.api.mappers.toChatMessageDto
+import com.project.chirp.domain.event.ChatParticipantLeftEvent
+import com.project.chirp.domain.event.ChatParticipantsJoinedEvent
 import com.project.chirp.domain.exception.ChatNotFoundException
 import com.project.chirp.domain.exception.ChatParticipantNotFoundException
 import com.project.chirp.domain.exception.ForbiddenException
@@ -16,6 +18,7 @@ import com.project.chirp.infra.database.mappers.toChatMessage
 import com.project.chirp.infra.database.repositories.ChatMessageRepository
 import com.project.chirp.infra.database.repositories.ChatParticipantRepository
 import com.project.chirp.infra.database.repositories.ChatRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -24,6 +27,7 @@ import java.time.Instant
 
 /***
  * Service for managing chat-related operations.
+ * @see getChatMessages Retrieves chat messages for a chat before a given time.
  * @see createChat Creates a chat between the creator and other participants.
  * @see addParticipantsToChat Adds participants to an existing chat.
  * @see removeParticipantFromChat Removes a participant from an existing chat.
@@ -33,8 +37,20 @@ class ChatService(
     private val chatRepository: ChatRepository,
     private val chatParticipantRepository: ChatParticipantRepository,
     private val chatMessageRepository: ChatMessageRepository,
+    private val applicationEventPublisher: ApplicationEventPublisher
 ) {
 
+    /***
+     * Retrieves chat messages for a chat before a given time.
+     * @param chatId: The unique identifier for the chat.
+     * @param before: The timestamp before which chat messages should be fetched.
+     * @param pageSize: The number of chat messages to fetch.
+     * @return A list of chat messages for the given chat before the given time.
+     *
+     * We will later cache these messages for a given chat in Redis, and we need to do that
+     * with the ChatMessageDto type because this is what all the client needs. The ChatMessageDto
+     * don't contain the entire sender information, only the sender ID which is much lighter
+     */
     fun getChatMessages(
         chatId: ChatId,
         before: Instant?,
@@ -44,10 +60,10 @@ class ChatService(
             .findByChatIdBefore(
                 chatId = chatId,
                 before = before ?: Instant.now(),
-                pageable = PageRequest.of(0, pageSize)
+                pageable = PageRequest.of(0, pageSize) // page number is zero since we use timestamp as a page parameter
             )
-            .content
-            .asReversed()
+            .content // need to pass a list from the returned Slice instance
+            .asReversed() // the query loads the 20 most recent messages, and we need the latest message at the bottom of the list
             .map { it.toChatMessage().toChatMessageDto() }
     }
 
@@ -111,6 +127,13 @@ class ChatService(
             }
         ).toChat(lastMessage)
 
+        applicationEventPublisher.publishEvent(
+            ChatParticipantsJoinedEvent(
+                chatId = chatId,
+                userIds = userIds
+            )
+        )
+
         return updatedChat
     }
 
@@ -140,6 +163,13 @@ class ChatService(
             chat.apply {
                 this.participants = chat.participants - participant
             }
+        )
+
+        applicationEventPublisher.publishEvent(
+            ChatParticipantLeftEvent(
+                chatId = chatId,
+                userId = userId
+            )
         )
     }
 

@@ -1,7 +1,7 @@
 package com.project.chirp.service
 
-import com.project.chirp.api.dto.ChatMessageDto
-import com.project.chirp.api.mappers.toChatMessageDto
+import com.project.chirp.domain.event.MessageDeletedEvent
+import com.project.chirp.domain.events.chat.ChatEvent
 import com.project.chirp.domain.exception.ChatNotFoundException
 import com.project.chirp.domain.exception.ChatParticipantNotFoundException
 import com.project.chirp.domain.exception.ForbiddenException
@@ -15,19 +15,20 @@ import com.project.chirp.infra.database.mappers.toChatMessage
 import com.project.chirp.infra.database.repositories.ChatMessageRepository
 import com.project.chirp.infra.database.repositories.ChatParticipantRepository
 import com.project.chirp.infra.database.repositories.ChatRepository
-import org.springframework.data.domain.PageRequest
+import com.project.chirp.infra.message_queue.EventPublisher
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
 
 /***
  * Service for managing chat messages.
  * @param chatRepository: Repository for managing chat entities.
  * @param chatMessageRepository: Repository for managing chat message entities.
  * @param chatParticipantRepository: Repository for managing chat participant entities.
+ * @param applicationEventPublisher: Publisher for application events.
+ * @param eventPublisher: Publisher for RabbitMQ events.
  *
- * @see getChatMessages Retrieves chat messages for a chat before a given time.
  * @see sendMessage Sends a chat message.
  * @see deleteMessage Deletes a chat message.
  */
@@ -35,36 +36,10 @@ import java.time.Instant
 class ChatMessageService(
     private val chatRepository: ChatRepository,
     private val chatMessageRepository: ChatMessageRepository,
-    private val chatParticipantRepository: ChatParticipantRepository
+    private val chatParticipantRepository: ChatParticipantRepository,
+    private val applicationEventPublisher: ApplicationEventPublisher,
+    private val eventPublisher: EventPublisher
 ) {
-
-    /***
-     * Retrieves chat messages for a chat before a given time.
-     * @param chatId: The unique identifier for the chat.
-     * @param before: The timestamp before which chat messages should be fetched.
-     * @param pageSize: The number of chat messages to fetch.
-     * @return A list of chat messages for the given chat before the given time.
-     *
-     * We will later cache these messages for a given chat in Redis, and we need to do that
-     * with the ChatMessageDto type because this is what all the client needs. The ChatMessageDto
-     * don't contain the entire sender information, only the sender ID which is much lighter
-     */
-    fun getChatMessages(
-        chatId: ChatId,
-        before: Instant?,
-        pageSize: Int
-    ): List<ChatMessageDto> {
-        return chatMessageRepository
-            .findByChatIdBefore(
-                chatId = chatId,
-                before = before ?: Instant.now(),
-                pageable = PageRequest.of(0, pageSize) // page number is zero since we use timestamp as a page parameter
-            )
-            .content // need to pass a list from the returned Slice instance
-            .asReversed() // the query loads the 20 most recent messages, and we need the latest message at the bottom of the list
-            .map { it.toChatMessage().toChatMessageDto() }
-    }
-
     /***
      * @param chatId: The ID of the chat.
      * @param senderId: The ID of the sender of the message.
@@ -93,13 +68,28 @@ class ChatMessageService(
         val sender = chatParticipantRepository.findByIdOrNull(senderId)
             ?: throw ChatParticipantNotFoundException(senderId)
 
-        val savedMessage = chatMessageRepository.save(
+        /***
+         * We need to flush the changes to the database immediately after saving the message.
+         * This is because we need to get the ID of the message to send it to the clients.
+         * Without flushing, we wouldn't have updated information of inserted save message.
+         */
+        val savedMessage = chatMessageRepository.saveAndFlush(
             ChatMessageEntity(
                 id = messageId,
                 content = content.trim(),
                 chatId = chatId,
                 chat = chat,
                 sender = sender
+            )
+        )
+
+        eventPublisher.publish(
+            event = ChatEvent.NewMessage(
+                senderId = sender.userId,
+                senderUsername = sender.username,
+                recipientIds = chat.participants.map { it.userId }.toSet(),
+                chatId = chatId,
+                message = savedMessage.content
             )
         )
 
@@ -126,5 +116,12 @@ class ChatMessageService(
         }
 
         chatMessageRepository.delete(message)
+
+        applicationEventPublisher.publishEvent(
+            MessageDeletedEvent(
+                chatId = message.chatId,
+                messageId = messageId
+            )
+        )
     }
 }

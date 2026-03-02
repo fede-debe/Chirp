@@ -18,6 +18,7 @@ import com.project.chirp.infra.database.mappers.toChatMessage
 import com.project.chirp.infra.database.repositories.ChatMessageRepository
 import com.project.chirp.infra.database.repositories.ChatParticipantRepository
 import com.project.chirp.infra.database.repositories.ChatRepository
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.repository.findByIdOrNull
@@ -50,7 +51,22 @@ class ChatService(
      * We will later cache these messages for a given chat in Redis, and we need to do that
      * with the ChatMessageDto type because this is what all the client needs. The ChatMessageDto
      * don't contain the entire sender information, only the sender ID which is much lighter
+     *
+     * @Cacheable caches the result of this method in Redis for a given chat ID because we need to
+     * know which specific cached list of messages we want to load.
+     * The condition ensures that we cache only the first page of chat messages.
+     * The sync parameter ensures that if 2 simultaneous requests are coming, it will wait for the
+     * first one to make the DB query to populate and cache and the second then immediately respond
+     * with the cached data. The dto contains exactly the data we want to respond with and cached.
+     *
+     * If someone update the cached list of messages, the next request will get the updated list.
      */
+    @Cacheable(
+        value = ["messages"],
+        key = "#chatId",
+        condition = "#before == null && #pageSize <= 50",
+        sync = true
+    )
     fun getChatMessages(
         chatId: ChatId,
         before: Instant?,

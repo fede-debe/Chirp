@@ -16,6 +16,7 @@ import com.project.chirp.infra.database.repositories.ChatMessageRepository
 import com.project.chirp.infra.database.repositories.ChatParticipantRepository
 import com.project.chirp.infra.database.repositories.ChatRepository
 import com.project.chirp.infra.message_queue.EventPublisher
+import org.springframework.cache.annotation.CacheEvict
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -55,8 +56,14 @@ class ChatMessageService(
      * @throws ChatParticipantNotFoundException: If the sender is not found in the chat.
      *
      * @Transactional is needed here to execute the different queries in a single transaction.
+     * @CacheEvict evicts the cached list of messages for the given chat ID after saving a new message.
+     * This ensures that the next request for chat messages will fetch the updated list from the database.
      */
     @Transactional
+    @CacheEvict(
+        value = ["messages"],
+        key = "#chatId",
+    )
     fun sendMessage(
         chatId: ChatId,
         senderId: UserId,
@@ -123,5 +130,15 @@ class ChatMessageService(
                 messageId = messageId
             )
         )
+
+        evictMessagesCache(message.chatId)
+    }
+
+    @CacheEvict(
+        value = ["messages"],
+        key = "#chatId",
+    )
+    fun evictMessagesCache(chatId: ChatId) {
+        // NO-OP: Let Spring handle the cache evict
     }
 }

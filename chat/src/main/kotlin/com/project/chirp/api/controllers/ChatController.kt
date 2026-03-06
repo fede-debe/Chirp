@@ -9,11 +9,16 @@ import com.project.chirp.api.util.requestUserId
 import com.project.chirp.domain.type.ChatId
 import com.project.chirp.service.ChatService
 import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
 
 /***
  * Controller for chat-related operations.
+ * @see getMessagesForChat Retrieves chat messages for a chat before a given time.
+ * @see getChat Retrieves a chat by its ID.
+ * @see getChatsForUser Retrieves all chats for a given user.
  * @see createChat Creates a chat between the creator and other participants.
  * @see addChatParticipants Adds participants to an existing chat.
  * @see leaveChat Removes the current user from a chat.
@@ -39,6 +44,23 @@ class ChatController(
             before = before,
             pageSize = pageSize
         )
+    }
+
+    @GetMapping("/{chatId}")
+    fun getChat(
+        @PathVariable("chatId") chatId: ChatId,
+    ): ChatDto {
+        return chatService.getChatById(
+            chatId = chatId,
+            requestUserId = requestUserId
+        )?.toChatDto() ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+    }
+
+    @GetMapping
+    fun getChatsForUser(): List<ChatDto> {
+        return chatService.findChatsByUser(
+            userId = requestUserId,
+        ).map { it.toChatDto() }
     }
 
     @PostMapping

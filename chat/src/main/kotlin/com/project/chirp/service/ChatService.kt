@@ -32,6 +32,8 @@ import java.time.Instant
  * @see createChat Creates a chat between the creator and other participants.
  * @see addParticipantsToChat Adds participants to an existing chat.
  * @see removeParticipantFromChat Removes a participant from an existing chat.
+ * @see getChatById Retrieves a chat by its ID.
+ * @see findChatsByUser Retrieves all chats for a given user.
  */
 @Service
 class ChatService(
@@ -81,6 +83,40 @@ class ChatService(
             .content // need to pass a list from the returned Slice instance
             .asReversed() // the query loads the 20 most recent messages, and we need the latest message at the bottom of the list
             .map { it.toChatMessage().toChatMessageDto() }
+    }
+
+    /**
+     * Retrieves a chat by its ID.
+     * @param chatId: The unique identifier for the chat.
+     * @param requestUserId: The ID of the user requesting the chat, we need to check if user is part of the chat.
+     * @return The chat if found, otherwise null.
+     */
+    fun getChatById(
+        chatId: ChatId,
+        requestUserId: UserId
+    ): Chat? {
+        return chatRepository
+            .findChatById(chatId, requestUserId)
+            ?.toChat(lastMessageForChat(chatId))
+    }
+
+    /**
+     * Retrieves all chats for a given user.
+     * @param userId: The ID of the user.
+     * @return A list of chats for the given user.
+     */
+    fun findChatsByUser(userId: UserId): List<Chat> {
+        val chatEntities = chatRepository.findAllByUserId(userId)
+        val chatIds = chatEntities.mapNotNull { it.id }
+        val latestMessages = chatMessageRepository
+            .findLatestMessagesByChatIds(chatIds.toSet())
+            .associateBy { it.chatId } // take latest message for each chat
+
+        return chatEntities
+            .map {
+                it.toChat(lastMessage = latestMessages[it.id]?.toChatMessage())
+            }
+            .sortedByDescending { it.lastActivityAt }
     }
 
     /***

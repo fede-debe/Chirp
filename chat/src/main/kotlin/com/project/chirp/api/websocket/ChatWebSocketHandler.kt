@@ -2,6 +2,8 @@ package com.project.chirp.api.websocket
 
 import com.project.chirp.api.dto.ws.*
 import com.project.chirp.api.mappers.toChatMessageDto
+import com.project.chirp.api.websocket.ChatWebSocketHandler.Companion.PING_INTERVAL_MS
+import com.project.chirp.api.websocket.ChatWebSocketHandler.Companion.PONG_TIMEOUT_MS
 import com.project.chirp.domain.event.ChatParticipantLeftEvent
 import com.project.chirp.domain.event.ChatParticipantsJoinedEvent
 import com.project.chirp.domain.event.MessageDeletedEvent
@@ -12,12 +14,11 @@ import com.project.chirp.service.ChatService
 import com.project.chirp.service.JwtService
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
-import org.springframework.web.socket.CloseStatus
-import org.springframework.web.socket.TextMessage
-import org.springframework.web.socket.WebSocketSession
+import org.springframework.web.socket.*
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import tools.jackson.core.JacksonException
 import tools.jackson.databind.ObjectMapper
@@ -40,6 +41,16 @@ class ChatWebSocketHandler(
     private val chatService: ChatService,
     private val jwtService: JwtService
 ) : TextWebSocketHandler() {
+
+    /***
+     * Configuration constants for WebSocket ping and timeout
+     * @see PING_INTERVAL_MS: Interval for sending WebSocket pings. Default is 30 seconds.
+     * @see PONG_TIMEOUT_MS: Timeout for WebSocket pongs. After this time, the connection will be closed.
+     * */
+    companion object {
+        private const val PING_INTERVAL_MS = 30_000L
+        private const val PONG_TIMEOUT_MS = 60_000L
+    }
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -279,6 +290,62 @@ class ChatWebSocketHandler(
         )
     }
 
+    override fun handlePongMessage(session: WebSocketSession, message: PongMessage) {
+        connectionLock.write {
+            sessions.compute(session.id) { _, userSession ->
+                userSession?.copy(
+                    lastPongTimestamp = System.currentTimeMillis()
+                )
+            }
+        }
+        logger.debug("Received pong from ${session.id}")
+    }
+
+    /***
+     * Sends a ping to all active WebSocket sessions.
+     * */
+    @Scheduled(fixedDelay = PING_INTERVAL_MS)
+    fun pingClients() {
+        val currentTime = System.currentTimeMillis()
+        val sessionsToClose = mutableListOf<String>()
+
+        // clear snapshot to work with at the beginning of the function
+        val sessionsSnapshot = connectionLock.read { sessions.toMap() }
+
+        sessionsSnapshot.forEach { (sessionId, userSession) ->
+            try {
+                if (userSession.session.isOpen) {
+                    // check if the session has timed out
+                    val lastPong = userSession.lastPongTimestamp
+                    if (currentTime - lastPong > PONG_TIMEOUT_MS) {
+                        logger.warn("Session $sessionId has timed out, closing connection.")
+                        sessionsToClose.add(sessionId)
+                        return@forEach
+                    }
+
+                    // send ping to the session
+                    userSession.session.sendMessage(PingMessage())
+                    logger.debug("Sent ping to {}", userSession.userId)
+                }
+            } catch (e: Exception) {
+                logger.error("Could not ping session $sessionId", e)
+                sessionsToClose.add(sessionId)
+            }
+        }
+
+        sessionsToClose.forEach { sessionId ->
+            connectionLock.read {
+                sessions[sessionId]?.session?.let { session ->
+                    try {
+                        session.close(CloseStatus.GOING_AWAY.withReason("Ping timeout"))
+                    } catch (e: Exception) {
+                        logger.error("Couldn't close sessions for session ${session.id}")
+                    }
+                }
+            }
+        }
+    }
+
     /***
      * Sends an error WebSocket message to a specific session.
      * @param session The WebSocket session.
@@ -403,6 +470,7 @@ class ChatWebSocketHandler(
      * */
     private data class UserSession(
         val userId: UserId,
-        val session: WebSocketSession
+        val session: WebSocketSession,
+        val lastPongTimestamp: Long = System.currentTimeMillis()
     )
 }

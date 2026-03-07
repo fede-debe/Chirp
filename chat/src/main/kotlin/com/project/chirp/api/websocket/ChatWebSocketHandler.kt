@@ -366,7 +366,7 @@ class ChatWebSocketHandler(
 
     /***
      * Sends a WebSocket message to a specific user, this is why we are using outgoing message type.
-     * @see userSessions: if we want to send a serialized version of this message to a give user we need to know
+     * val userSessions: if we want to send a serialized version of this message to a give user we need to know
      * which session we need to send (single user can have multiple active sessions if user connects
      * from multiple devices simultaneously) With the connectionLock everything is synchronized.
      * @param userId The user ID to send the message to.

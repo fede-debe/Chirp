@@ -21,7 +21,7 @@ class JwtService(
      * Secret key for signing JWT tokens.
      */
     private val secretKey = Keys.hmacShaKeyFor(
-        Base64.decode(secretBase64)
+        Base64.Default.decode(secretBase64)
     )
 
     /***
@@ -84,7 +84,7 @@ class JwtService(
     /**
      * @param token The JWT token to parse.
      * @return The user ID encoded in the JWT token.
-     * @throws InvalidTokenException if the token is not valid.
+     * @throws com.project.chirp.domain.exception.InvalidTokenException if the token is not valid.
      */
     fun getUserIdFromToken(token: String): UserId {
         val claims = parseAllClaims(token) ?: throw InvalidTokenException(

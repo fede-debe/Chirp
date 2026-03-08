@@ -55,9 +55,7 @@ class ChatMessageEntity(
     @ManyToOne(fetch = FetchType.EAGER) // we set this to EAGER because we wouldn't need the LEFT JOIN FETCH for sender
     @JoinColumn(
         name = "sender_id",
-        nullable = false,
-        insertable = false,
-        updatable = false
+        nullable = false
     )
     var sender: ChatParticipantEntity,
     @CreationTimestamp

@@ -152,6 +152,45 @@ class ChatWebSocketHandler(
     }
 
     /**
+     * Handles closing a WebSocket connection.
+     * @param session The WebSocket session.
+     * @param status The close status.
+     * */
+    override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
+        connectionLock.write {
+            sessions.remove(session.id)?.let { userSession ->
+                val userId = userSession.userId
+
+                userToSessions.compute(userId) { _, sessions ->
+                    sessions
+                        ?.apply { remove(session.id) }
+                        ?.takeIf { it.isNotEmpty() }
+                }
+
+                userChatIds[userId]?.forEach { chatId ->
+                    chatToSessions.compute(chatId) { _, sessions ->
+                        sessions
+                            ?.apply { remove(session.id) }
+                            ?.takeIf { it.isNotEmpty() }
+                    }
+                }
+
+                logger.info("Websocket session closed for user $userId")
+            }
+        }
+    }
+
+    /***
+     * Handles a transport error for a WebSocket session.
+     * @param session The WebSocket session.
+     * @param exception The Throwable representing the error.
+     * */
+    override fun handleTransportError(session: WebSocketSession, exception: Throwable) {
+        logger.error("Transport error for session ${session.id}", exception)
+        session.close(CloseStatus.SERVER_ERROR.withReason("Transport error"))
+    }
+
+    /**
      * Handles incoming WebSocket messages.
      * @param session The WebSocket session.
      * @param message The WebSocket message.

@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
  * @see onValidationException: Handles MethodArgumentNotValidException.
  * @see onEmailNotVerified: Handles EmailNotVerifiedException.
  * @see onRateLimitExceeded: Handle RateLimitException
+ * @see onSamePassword: Handle SamePasswordException
  * @see onUnauthorized: Handle UnauthorizedException
  */
 @RestControllerAdvice

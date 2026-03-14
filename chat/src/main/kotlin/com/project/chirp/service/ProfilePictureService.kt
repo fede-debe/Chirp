@@ -2,11 +2,13 @@ package com.project.chirp.service
 
 import com.project.chirp.domain.event.ProfilePictureUpdatedEvent
 import com.project.chirp.domain.exception.ChatParticipantNotFoundException
+import com.project.chirp.domain.exception.InvalidProfilePictureException
 import com.project.chirp.domain.models.ProfilePictureUploadCredentials
 import com.project.chirp.domain.type.UserId
 import com.project.chirp.infra.database.repositories.ChatParticipantRepository
 import com.project.chirp.infra.storage.SupabaseStorageService
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -21,12 +23,14 @@ import org.springframework.transaction.annotation.Transactional
  * @param supabaseStorageService: Service for interacting with Supabase storage.
  * @param chatParticipantRepository: Repository for managing chat participant entities.
  * @param applicationEventPublisher: Publisher for application events.
+ * @param supabaseUrl: The URL of the Supabase instance.
  */
 @Service
 class ProfilePictureService(
     private val supabaseStorageService: SupabaseStorageService,
     private val chatParticipantRepository: ChatParticipantRepository,
-    private val applicationEventPublisher: ApplicationEventPublisher
+    private val applicationEventPublisher: ApplicationEventPublisher,
+    @param:Value("\${supabase.url}") private val supabaseUrl: String
 ) {
 
     private val logger = LoggerFactory.getLogger(ProfilePictureService::class.java)
@@ -67,6 +71,12 @@ class ProfilePictureService(
 
     @Transactional
     fun confirmProfilePictureUpload(userId: UserId, publicUrl: String) {
+        // we need to avoid malicious URLs we need to check if the URL starts with the supabase URL
+        // and to extend this validation we could also check if the URL is related a existing file in Supabase storage.
+        if (!publicUrl.startsWith(supabaseUrl)) {
+            throw InvalidProfilePictureException("Invalid profile picture URL")
+        }
+
         val participant = chatParticipantRepository.findByIdOrNull(userId)
             ?: throw ChatParticipantNotFoundException(userId)
 

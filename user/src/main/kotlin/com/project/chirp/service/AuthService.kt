@@ -104,7 +104,12 @@ class AuthService(
         }
 
         if (!user.hasVerifiedEmail) {
-            throw EmailNotVerifiedException()
+            val hasActiveToken = emailVerificationService.hasActiveVerificationToken(user)
+            if (!hasActiveToken) {
+                emailVerificationService.resendVerificationEmail(user.email)
+                throw EmailNotVerifiedException(verificationEmailResent = true)
+            }
+            throw EmailNotVerifiedException(verificationEmailResent = false)
         }
 
         /*** Ensure that the user has an ID before proceeding on creating tokens */

@@ -67,7 +67,8 @@ class AuthExceptionHandler {
         e: EmailNotVerifiedException
     ) = mapOf(
         "code" to "EMAIL_NOT_VERIFIED",
-        "message" to e.message
+        "message" to e.message,
+        "verificationEmailResent" to e.verificationEmailResent
     )
 
     @ExceptionHandler(UnauthorizedException::class)

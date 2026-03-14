@@ -22,9 +22,20 @@ interface EmailVerificationTokenRepository : JpaRepository<EmailVerificationToke
     @Query(
         """
         UPDATE EmailVerificationTokenEntity e
-        SET e.usedAt = CURRENT_TIMESTAMP 
+        SET e.usedAt = CURRENT_TIMESTAMP
         WHERE e.user = :user
     """
     )
     fun invalidateActiveTokensForUser(user: UserEntity)
+
+    @Query(
+        """
+        SELECT CASE WHEN COUNT(e) > 0 THEN true ELSE false END
+        FROM EmailVerificationTokenEntity e
+        WHERE e.user = :user
+        AND e.usedAt IS NULL
+        AND e.expiresAt > CURRENT_TIMESTAMP
+    """
+    )
+    fun hasActiveTokenForUser(user: UserEntity): Boolean
 }

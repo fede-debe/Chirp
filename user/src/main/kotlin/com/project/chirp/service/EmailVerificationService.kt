@@ -5,6 +5,7 @@ import com.project.chirp.domain.exception.InvalidTokenException
 import com.project.chirp.domain.exception.UserNotFoundException
 import com.project.chirp.domain.model.EmailVerificationToken
 import com.project.chirp.infra.database.entities.EmailVerificationTokenEntity
+import com.project.chirp.infra.database.entities.UserEntity
 import com.project.chirp.infra.database.mappers.toEmailVerificationToken
 import com.project.chirp.infra.database.mappers.toUser
 import com.project.chirp.infra.database.repositories.EmailVerificationTokenRepository
@@ -106,6 +107,11 @@ class EmailVerificationService(
                 username = verificationToken.user.username,
             )
         )
+    }
+
+    @Transactional(readOnly = true)
+    fun hasActiveVerificationToken(user: UserEntity): Boolean {
+        return emailVerificationTokenRepository.hasActiveTokenForUser(user)
     }
 
     @Scheduled(cron = "0 0 3 * * *")

@@ -7,6 +7,9 @@ import org.springframework.web.client.RestClient
 
 /***
  * Configures the RestClient for Supabase API calls.
+ *
+ * default headers content/json is removed since we can't use it with delete requests.
+ * It will be added manually to requests that need it.
  */
 @Configuration
 class SupabaseRestClientConfig(
@@ -19,7 +22,6 @@ class SupabaseRestClientConfig(
         return RestClient.builder()
             .baseUrl(supabaseUrl)
             .defaultHeader("Authorization", "Bearer $supabaseServiceKey")
-            .defaultHeader("Content-Type", "application/json")
             .build()
     }
 }

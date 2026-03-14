@@ -7,6 +7,7 @@ import com.project.chirp.api.websocket.ChatWebSocketHandler.Companion.PONG_TIMEO
 import com.project.chirp.domain.event.ChatParticipantLeftEvent
 import com.project.chirp.domain.event.ChatParticipantsJoinedEvent
 import com.project.chirp.domain.event.MessageDeletedEvent
+import com.project.chirp.domain.event.ProfilePictureUpdatedEvent
 import com.project.chirp.domain.type.ChatId
 import com.project.chirp.domain.type.UserId
 import com.project.chirp.service.ChatMessageService
@@ -498,6 +499,52 @@ class ChatWebSocketHandler(
                 } catch (e: Exception) {
                     logger.error("Error while sending message to $userId", e)
                 }
+            }
+        }
+    }
+
+    /***
+     * Handles a profile picture update event.
+     * @param event The ProfilePictureUpdatedEvent containing the user ID and new URL.
+     * Broadcasts the message to related chats and updates the session maps.
+     * */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onProfilePictureUpdated(event: ProfilePictureUpdatedEvent) {
+        val userChats = connectionLock.read {
+            userChatIds[event.userId]?.toList() ?: emptyList()
+        }
+
+        val dto = ProfilePictureUpdateDto(
+            userId = event.userId,
+            newUrl = event.newUrl,
+        )
+
+        // collect all active sessions for the user
+        val sessionIds = mutableSetOf<String>()
+        userChats.forEach { chatId ->
+            connectionLock.read {
+                chatToSessions[chatId]?.let { sessions ->
+                    sessionIds.addAll(sessions)
+                }
+            }
+        }
+
+        val webSocketMessage = OutgoingWebSocketMessage(
+            type = OutgoingWebSocketMessageType.PROFILE_PICTURE_UPDATED,
+            payload = objectMapper.writeValueAsString(dto)
+        )
+        val messageJson = objectMapper.writeValueAsString(webSocketMessage)
+
+        sessionIds.forEach { sessionId ->
+            val userSession = connectionLock.read {
+                sessions[sessionId]
+            } ?: return@forEach
+            try {
+                if (userSession.session.isOpen) {
+                    userSession.session.sendMessage(TextMessage(messageJson))
+                }
+            } catch (e: Exception) {
+                logger.error("Could not send profile picture update to session $sessionId", e)
             }
         }
     }

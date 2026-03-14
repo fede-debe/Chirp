@@ -21,6 +21,7 @@ dependencies {
     implementation(libs.spring.boot.starter.mail)
     implementation(libs.spring.boot.starter.amqp)
     implementation(libs.spring.boot.starter.thymeleaf)
+    implementation(libs.spring.boot.starter.data.jpa)
 
     testImplementation(kotlin("test"))
 }

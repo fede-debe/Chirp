@@ -32,14 +32,16 @@ import tools.jackson.module.kotlin.kotlinModule
  * @see messageConverter: Configures a JacksonJsonMessageConverter for RabbitMQ.
  * @see rabbitTemplate: Configures a RabbitTemplate for RabbitMQ.
  * @see rabbitListenerContainerFactory: Configures a SimpleRabbitListenerContainerFactory for RabbitMQ.
- * @see userExchange: Configures a TopicExchange for user events. User routing office that handles user-related
+ * @see userExchange Configures a TopicExchange for user events. User routing office that handles user-related
  * events and decides where to route them.
- * @see chatExchange: Configures a TopicExchange for chat events. Chat routing office that handles chat-related
+ * @see chatExchange Configures a TopicExchange for chat events. Chat routing office that handles chat-related
  * events and decides where to route them.
- * @see chatUserEventsQueue: Configures a Queue for chat events related to users, after exchange routing.
- * @see notificationUserEventsQueue: Configures a Queue for notification events related to users, after exchange routing.
- * @see notificationUserEventsBinding: Configures a Binding for notification events related to users, after exchange routing.
- * @see chatUserEventsBinding: Configures a Binding for chat events related to users, after exchange routing.
+ * @see chatUserEventsQueue Configures a Queue for chat events related to users, after exchange routing.
+ * @see notificationUserEventsQueue Configures a Queue for notification events related to users, after exchange routing.
+ * @see notificationUserEventsBinding Configures a Binding for notification events related to users, after exchange routing.
+ * @see notificationChatEventsQueue Configures a Queue for notification events related to chat, after exchange routing.
+ * @see notificationChatEventsBinding Configures a Binding for chat events related to notifications, after exchange routing.
+ * @see chatUserEventsBinding Configures a Binding for chat events related to users, after exchange routing.
  */
 @Configuration
 @EnableTransactionManagement
@@ -74,7 +76,7 @@ class RabbitMqConfig {
         return SimpleRabbitListenerContainerFactory().apply {
             this.setConnectionFactory(connectionFactory)
             this.setTransactionManager(transactionManager)
-            this.setChannelTransacted(true)   // <- messaghe converter
+            this.setChannelTransacted(true)   // <- message converter
             setMessageConverter(messageConverter)
         }
     }
@@ -124,6 +126,23 @@ class RabbitMqConfig {
             .bind(notificationUserEventsQueue)
             .to(userExchange)
             .with("user.*")
+    }
+
+    @Bean
+    fun notificationChatEventsQueue() = Queue(
+        MessageQueues.NOTIFICATION_CHAT_EVENTS,
+        true
+    )
+
+    @Bean
+    fun notificationChatEventsBinding(
+        notificationChatEventsQueue: Queue,
+        chatExchange: TopicExchange,
+    ): Binding {
+        return BindingBuilder
+            .bind(notificationChatEventsQueue)
+            .to(chatExchange)
+            .with(ChatEventConstants.CHAT_NEW_MESSAGE)
     }
 
     /***

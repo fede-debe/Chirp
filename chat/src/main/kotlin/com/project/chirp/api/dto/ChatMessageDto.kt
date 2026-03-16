@@ -12,6 +12,7 @@ import java.time.Instant
  * @param content The content of the chat message.
  * @param createdAt The creation time of the chat message.
  * @param senderId The ID of the sender of the chat message.
+ * @param attachments The attachments of the chat message.
  *
  * @see ChatDto
  */
@@ -20,5 +21,6 @@ data class ChatMessageDto(
     val chatId: ChatId,
     val content: String,
     val createdAt: Instant,
-    val senderId: UserId
+    val senderId: UserId,
+    val attachments: List<ChatAttachmentDto> = emptyList()
 )

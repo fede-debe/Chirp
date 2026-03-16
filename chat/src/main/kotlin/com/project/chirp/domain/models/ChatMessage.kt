@@ -13,11 +13,15 @@ import java.time.Instant
  * @param sender: The participant who sent the message.
  * @param content: The content of the message.
  * @param createdAt: The time when the message was created.
+ * @param attachments: The file attachments associated with the message. Defaults to an empty list
+ *   so that callers that do not need attachments (e.g. last-message previews in chat lists) are
+ *   not forced to supply them.
  */
 data class ChatMessage(
     val id: ChatMessageId,
     val chatId: ChatId,
     val sender: ChatParticipant,
     val content: String,
-    val createdAt: Instant
+    val createdAt: Instant,
+    val attachments: List<ChatAttachment> = emptyList()
 )

@@ -1,9 +1,11 @@
 package com.project.chirp.api.mappers
 
+import com.project.chirp.api.dto.ChatAttachmentDto
 import com.project.chirp.api.dto.ChatDto
 import com.project.chirp.api.dto.ChatMessageDto
 import com.project.chirp.api.dto.ChatParticipantDto
 import com.project.chirp.domain.models.Chat
+import com.project.chirp.domain.models.ChatAttachment
 import com.project.chirp.domain.models.ChatMessage
 import com.project.chirp.domain.models.ChatParticipant
 
@@ -22,13 +24,33 @@ fun Chat.toChatDto(): ChatDto {
     )
 }
 
+/***
+ * Converts a ChatAttachment domain model to its DTO representation for API responses.
+ */
+fun ChatAttachment.toChatAttachmentDto(): ChatAttachmentDto {
+    return ChatAttachmentDto(
+        id = id,
+        storageUrl = storageUrl,
+        mimeType = mimeType,
+        originalFileName = originalFileName,
+        sizeInBytes = sizeInBytes,
+        createdAt = createdAt
+    )
+}
+
+/***
+ * Converts a ChatMessage domain model to its DTO representation for API responses.
+ * Attachments are mapped using toChatAttachmentDto() and will be an empty list when the
+ * underlying entity was loaded without fetching attachments (e.g. for last-message previews).
+ */
 fun ChatMessage.toChatMessageDto(): ChatMessageDto {
     return ChatMessageDto(
         id = id,
         chatId = chatId,
         content = content,
         createdAt = createdAt,
-        senderId = sender.userId
+        senderId = sender.userId,
+        attachments = attachments.map { it.toChatAttachmentDto() }
     )
 }
 

@@ -56,6 +56,7 @@ fun ChatMessageAttachmentEntity.toChatAttachment(): ChatAttachment {
         mimeType = mimeType,
         originalFileName = originalFileName,
         sizeInBytes = sizeInBytes,
+        durationInSeconds = durationInSeconds,
         createdAt = createdAt
     )
 }

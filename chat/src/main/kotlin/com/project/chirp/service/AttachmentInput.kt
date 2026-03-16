@@ -17,5 +17,6 @@ data class AttachmentInput(
     val storageUrl: String,
     val mimeType: String,
     val originalFileName: String,
-    val sizeInBytes: Long
+    val sizeInBytes: Long,
+    val durationInSeconds: Long? = null
 )

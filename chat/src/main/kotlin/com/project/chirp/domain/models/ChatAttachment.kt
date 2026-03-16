@@ -21,5 +21,6 @@ data class ChatAttachment(
     val mimeType: String,
     val originalFileName: String,
     val sizeInBytes: Long,
+    val durationInSeconds: Long? = null,
     val createdAt: Instant
 )

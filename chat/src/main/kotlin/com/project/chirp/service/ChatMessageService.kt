@@ -117,7 +117,8 @@ class ChatMessageService(
                         storageUrl = input.storageUrl,
                         mimeType = input.mimeType,
                         originalFileName = input.originalFileName,
-                        sizeInBytes = input.sizeInBytes
+                        sizeInBytes = input.sizeInBytes,
+                        durationInSeconds = input.durationInSeconds
                     )
                 }
             )

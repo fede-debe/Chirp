@@ -34,6 +34,7 @@ fun ChatAttachment.toChatAttachmentDto(): ChatAttachmentDto {
         mimeType = mimeType,
         originalFileName = originalFileName,
         sizeInBytes = sizeInBytes,
+        durationInSeconds = durationInSeconds,
         createdAt = createdAt
     )
 }

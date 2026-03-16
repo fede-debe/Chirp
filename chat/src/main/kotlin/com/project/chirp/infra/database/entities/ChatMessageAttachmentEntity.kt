@@ -62,6 +62,9 @@ class ChatMessageAttachmentEntity(
     @Column(nullable = false)
     var sizeInBytes: Long,
 
+    @Column(nullable = true)
+    var durationInSeconds: Long? = null,
+
     @CreationTimestamp
     var createdAt: Instant = Instant.now()
 )

@@ -619,7 +619,7 @@ class ChatWebSocketHandler(
                 { handleTypingEvent(session, chatId, false) },
                 Instant.now().plusSeconds(3)
             )
-            typingTimers.computeIfAbsent(chatId) { ConcurrentHashMap() }[userId] = future!!
+            typingTimers.computeIfAbsent(chatId) { ConcurrentHashMap() }[userId] = future
         } else {
             typingTimers[chatId]?.let { if (it.isEmpty()) typingTimers.remove(chatId) }
         }

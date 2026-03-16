@@ -4,10 +4,7 @@ import com.project.chirp.api.dto.ws.*
 import com.project.chirp.api.mappers.toChatMessageDto
 import com.project.chirp.api.websocket.ChatWebSocketHandler.Companion.PING_INTERVAL_MS
 import com.project.chirp.api.websocket.ChatWebSocketHandler.Companion.PONG_TIMEOUT_MS
-import com.project.chirp.domain.event.ChatParticipantLeftEvent
-import com.project.chirp.domain.event.ChatParticipantsJoinedEvent
-import com.project.chirp.domain.event.MessageDeletedEvent
-import com.project.chirp.domain.event.ProfilePictureUpdatedEvent
+import com.project.chirp.domain.event.*
 import com.project.chirp.domain.type.ChatId
 import com.project.chirp.domain.type.UserId
 import com.project.chirp.service.ChatMessageService
@@ -595,6 +592,43 @@ class ChatWebSocketHandler(
             } catch (e: Exception) {
                 logger.error("Could not send profile picture update to session $sessionId", e)
             }
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onParticipantRemovedByAdmin(event: ParticipantRemovedByAdminEvent) {
+        sendToUser(
+            event.removedUserId,
+            OutgoingWebSocketMessage(
+                type = OutgoingWebSocketMessageType.REMOVED_FROM_CHAT,
+                payload = objectMapper.writeValueAsString(RemovedFromChatDto(event.chatId))
+            )
+        )
+        event.remainingParticipantIds.forEach { participantId ->
+            sendToUser(
+                participantId,
+                OutgoingWebSocketMessage(
+                    type = OutgoingWebSocketMessageType.CHAT_PARTICIPANTS_CHANGED,
+                    payload = objectMapper.writeValueAsString(ChatParticipantsChangedDto(event.chatId))
+                )
+            )
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onChatDeleted(event: ChatDeletedEvent) {
+        val message = OutgoingWebSocketMessage(
+            type = OutgoingWebSocketMessageType.CHAT_DELETED,
+            payload = objectMapper.writeValueAsString(ChatDeletedDto(event.chatId))
+        )
+        event.participantIds.forEach { participantId ->
+            sendToUser(participantId, message)
+        }
+        connectionLock.write {
+            event.participantIds.forEach { participantId ->
+                userChatIds[participantId]?.remove(event.chatId)
+            }
+            chatToSessions.remove(event.chatId)
         }
     }
 

@@ -37,6 +37,13 @@ class ChatExceptionHandler {
         "message" to e.message
     )
 
+    @ExceptionHandler(NotChatAdminException::class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    fun onNotChatAdmin(e: NotChatAdminException) = mapOf(
+        "code" to "NOT_CHAT_ADMIN",
+        "message" to e.message
+    )
+
     /**
      * Server error, not client fault.
      * */

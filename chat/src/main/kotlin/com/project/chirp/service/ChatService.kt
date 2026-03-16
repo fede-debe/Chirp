@@ -2,12 +2,11 @@ package com.project.chirp.service
 
 import com.project.chirp.api.dto.ChatMessageDto
 import com.project.chirp.api.mappers.toChatMessageDto
+import com.project.chirp.domain.event.ChatDeletedEvent
 import com.project.chirp.domain.event.ChatParticipantLeftEvent
 import com.project.chirp.domain.event.ChatParticipantsJoinedEvent
-import com.project.chirp.domain.exception.ChatNotFoundException
-import com.project.chirp.domain.exception.ChatParticipantNotFoundException
-import com.project.chirp.domain.exception.ForbiddenException
-import com.project.chirp.domain.exception.InvalidChatSizeException
+import com.project.chirp.domain.event.ParticipantRemovedByAdminEvent
+import com.project.chirp.domain.exception.*
 import com.project.chirp.domain.models.Chat
 import com.project.chirp.domain.models.ChatMessage
 import com.project.chirp.domain.type.ChatId
@@ -199,6 +198,15 @@ class ChatService(
         val participant = chat.participants.find { it.userId == userId }
             ?: throw ChatParticipantNotFoundException(userId)
 
+        if (userId == chat.creator.userId) {
+            val allParticipantIds = chat.participants.map { it.userId }.toSet()
+            chatRepository.delete(chat)
+            applicationEventPublisher.publishEvent(
+                ChatDeletedEvent(chatId = chatId, participantIds = allParticipantIds)
+            )
+            return
+        }
+
         /***
          * If removing the participant will leave the chat with only one participant, delete the chat.
          * If a chat is deleted, all its messages will also be deleted (everything related to the chat will be deleted).
@@ -221,6 +229,42 @@ class ChatService(
             ChatParticipantLeftEvent(
                 chatId = chatId,
                 userId = userId
+            )
+        )
+    }
+
+    @Transactional
+    fun removeParticipantAsAdmin(chatId: ChatId, adminId: UserId, targetUserId: UserId) {
+        val chat = chatRepository.findByIdOrNull(chatId)
+            ?: throw ChatNotFoundException()
+
+        if (chat.creator.userId != adminId) {
+            throw NotChatAdminException()
+        }
+
+        if (adminId == targetUserId) {
+            throw ForbiddenException()
+        }
+
+        val target = chat.participants.find { it.userId == targetUserId }
+            ?: throw ChatParticipantNotFoundException(targetUserId)
+
+        chatRepository.save(
+            chat.apply {
+                this.participants = chat.participants - target
+            }
+        )
+
+        val remainingParticipantIds = chat.participants
+            .map { it.userId }
+            .filter { it != targetUserId }
+            .toSet()
+
+        applicationEventPublisher.publishEvent(
+            ParticipantRemovedByAdminEvent(
+                chatId = chatId,
+                removedUserId = targetUserId,
+                remainingParticipantIds = remainingParticipantIds
             )
         )
     }

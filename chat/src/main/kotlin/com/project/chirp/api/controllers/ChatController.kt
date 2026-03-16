@@ -7,6 +7,7 @@ import com.project.chirp.api.dto.CreateChatRequest
 import com.project.chirp.api.mappers.toChatDto
 import com.project.chirp.api.util.requestUserId
 import com.project.chirp.domain.type.ChatId
+import com.project.chirp.domain.type.UserId
 import com.project.chirp.service.ChatService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -93,5 +94,13 @@ class ChatController(
             chatId = chatId,
             userId = requestUserId
         )
+    }
+
+    @DeleteMapping("/{chatId}/participants/{userId}")
+    fun removeParticipant(
+        @PathVariable chatId: ChatId,
+        @PathVariable userId: UserId
+    ) {
+        chatService.removeParticipantAsAdmin(chatId, requestUserId, userId)
     }
 }

@@ -35,6 +35,13 @@ class SupabaseStorageService(
             "image/jpg" to "jpg",
             "image/png" to "png",
             "image/webp" to "webp",
+            "audio/mp4" to "mp4",
+            "audio/m4a" to "m4a",
+            "audio/mpeg" to "mp3",
+            "audio/aac" to "aac",
+            "audio/wav" to "wav",
+            "audio/ogg" to "ogg",
+            "audio/webm" to "webm",
         )
     }
 

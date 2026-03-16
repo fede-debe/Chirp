@@ -4,10 +4,12 @@ import com.project.chirp.domain.exception.*
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestControllerAdvice
 
 /***
  * Handles exceptions related to chat-related operations.
  */
+@RestControllerAdvice
 class ChatExceptionHandler {
 
     @ExceptionHandler(
@@ -31,7 +33,7 @@ class ChatExceptionHandler {
     @ExceptionHandler(InvalidProfilePictureException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun onInvalidProfilePicture(e: InvalidProfilePictureException) = mapOf(
-        "code" to "INVALID_PROFILE_PICTURE",
+        "code" to "INVALID_MIME_TYPE",
         "message" to e.message
     )
 

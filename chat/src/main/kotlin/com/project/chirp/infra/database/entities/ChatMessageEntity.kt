@@ -16,6 +16,10 @@ import java.time.Instant
  * @param chat: The chat associated with the message.
  * @param sender: The participant who sent the message.
  * @param createdAt: The creation time of the chat message.
+ * @param attachments: The file attachments linked to this message. Declared as LAZY so attachments
+ *   are not loaded unless explicitly JOIN FETCHed — this prevents loading attachment data in
+ *   contexts where only the message text is needed. CascadeType.ALL and orphanRemoval = true
+ *   ensure attachments are persisted and removed together with their parent message.
  */
 @Entity
 @Table(
@@ -59,5 +63,8 @@ class ChatMessageEntity(
     )
     var sender: ChatParticipantEntity,
     @CreationTimestamp
-    var createdAt: Instant = Instant.now()
+    var createdAt: Instant = Instant.now(),
+
+    @OneToMany(mappedBy = "chatMessage", cascade = [CascadeType.ALL], orphanRemoval = true, fetch = FetchType.LAZY)
+    var attachments: MutableList<ChatMessageAttachmentEntity> = mutableListOf()
 )

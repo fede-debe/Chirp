@@ -33,12 +33,16 @@ interface ChatMessageRepository : JpaRepository<ChatMessageEntity, ChatMessageId
      * Slice doesn't come with an extra query, but for infinite loading list we don't really care which page we are on.
      * We would use Page for an environment like Google browser where you can see the actual number of available pages and navigate through them.
      *
+     * LEFT JOIN FETCH m.attachments eagerly loads attachments in the same query to avoid an N+1
+     * problem when each message is later converted to its domain model (toChatMessage).
+     *
      * ORDER BY m.createdAt DESC -> latest messages is on top of the list
      */
     @Query(
         """
         SELECT m
         FROM ChatMessageEntity m
+        LEFT JOIN FETCH m.attachments
         WHERE m.chatId = :chatId
         AND m.createdAt < :before
         ORDER BY m.createdAt DESC
@@ -56,12 +60,16 @@ interface ChatMessageRepository : JpaRepository<ChatMessageEntity, ChatMessageId
      *
      * @param chatIds: The unique identifiers for the chats.
      * @return A list of chat messages, one for each chat ID.
+     *
+     * LEFT JOIN FETCH m.attachments ensures that attachment data is fetched in the same query,
+     * preventing an N+1 problem when chat list previews include attachment metadata.
      */
     @Query(
         """
         SELECT m
         FROM ChatMessageEntity m
         LEFT JOIN FETCH m.sender
+        LEFT JOIN FETCH m.attachments
         WHERE m.chatId IN :chatIds
         AND (m.createdAt, m.id) = (
             SELECT m2.createdAt, m2.id

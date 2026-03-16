@@ -456,7 +456,8 @@ class ChatWebSocketHandler(
             chatId = dto.chatId,
             senderId = senderId,
             content = dto.content,
-            messageId = dto.messageId
+            messageId = dto.messageId,
+            attachmentUrls = dto.attachments
         )
 
         // Broadcast the new message to all connected clients in the chat

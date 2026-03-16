@@ -15,6 +15,7 @@ import com.project.chirp.service.ChatService
 import com.project.chirp.service.JwtService
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
+import org.springframework.scheduling.TaskScheduler
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.event.TransactionPhase
@@ -23,7 +24,9 @@ import org.springframework.web.socket.*
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import tools.jackson.core.JacksonException
 import tools.jackson.databind.ObjectMapper
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -40,7 +43,8 @@ class ChatWebSocketHandler(
     private val chatMessageService: ChatMessageService,
     private val objectMapper: ObjectMapper,
     private val chatService: ChatService,
-    private val jwtService: JwtService
+    private val jwtService: JwtService,
+    private val taskScheduler: TaskScheduler
 ) : TextWebSocketHandler() {
 
     /***
@@ -83,6 +87,7 @@ class ChatWebSocketHandler(
     private val userToSessions = ConcurrentHashMap<UserId, MutableSet<String>>()
     private val userChatIds = ConcurrentHashMap<UserId, MutableSet<ChatId>>()
     private val chatToSessions = ConcurrentHashMap<ChatId, MutableSet<String>>()
+    private val typingTimers = ConcurrentHashMap<ChatId, ConcurrentHashMap<UserId, ScheduledFuture<*>>>()
 
     /**
      * Define clear routes and paths, we adjust a HTTP that is being made here to establish a connection
@@ -101,9 +106,11 @@ class ChatWebSocketHandler(
             }
 
         val userId = jwtService.getUserIdFromToken(authHeader)
+        val username = chatService.getParticipantUsername(userId) ?: ""
 
         val userSession = UserSession(
             userId = userId,
+            username = username,
             session = session
         )
 
@@ -158,8 +165,11 @@ class ChatWebSocketHandler(
      * @param status The close status.
      * */
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
+        var disconnectedUserSession: UserSession? = null
+
         connectionLock.write {
             sessions.remove(session.id)?.let { userSession ->
+                disconnectedUserSession = userSession
                 val userId = userSession.userId
 
                 userToSessions.compute(userId) { _, sessions ->
@@ -177,6 +187,35 @@ class ChatWebSocketHandler(
                 }
 
                 logger.info("Websocket session closed for user $userId")
+            }
+        }
+
+        disconnectedUserSession?.let { userSession ->
+            val userId = userSession.userId
+            val activeTypingChats = mutableListOf<ChatId>()
+
+            typingTimers.forEach { (chatId, userTimers) ->
+                if (userTimers.remove(userId)?.cancel(false) != null) {
+                    activeTypingChats.add(chatId)
+                    if (userTimers.isEmpty()) typingTimers.remove(chatId)
+                }
+            }
+
+            activeTypingChats.forEach { chatId ->
+                broadcastToChat(
+                    chatId = chatId,
+                    message = OutgoingWebSocketMessage(
+                        type = OutgoingWebSocketMessageType.TYPING_INDICATOR,
+                        payload = objectMapper.writeValueAsString(
+                            TypingIndicatorDto(
+                                chatId = chatId,
+                                userId = userId,
+                                username = userSession.username,
+                                isTyping = false
+                            )
+                        )
+                    )
+                )
             }
         }
     }
@@ -220,6 +259,15 @@ class ChatWebSocketHandler(
                         dto = dto,
                         senderId = userSession.userId
                     )
+                }
+                IncomingWebSocketMessageType.TYPING_STARTED -> {
+                    val dto = objectMapper.readValue(webSocketMessage.payload, TypingEventDto::class.java)
+                    handleTypingEvent(session, dto.chatId, true)
+                }
+
+                IncomingWebSocketMessageType.TYPING_STOPPED -> {
+                    val dto = objectMapper.readValue(webSocketMessage.payload, TypingEventDto::class.java)
+                    handleTypingEvent(session, dto.chatId, false)
                 }
             }
         } catch (e: JacksonException) {
@@ -550,13 +598,63 @@ class ChatWebSocketHandler(
         }
     }
 
+    private fun handleTypingEvent(session: WebSocketSession, chatId: ChatId, isTyping: Boolean) {
+        val userSession = connectionLock.read { sessions[session.id] } ?: return
+        val userId = userSession.userId
+
+        val isParticipant = connectionLock.read { userChatIds[userId]?.contains(chatId) == true }
+        if (!isParticipant) {
+            sendError(
+                session = session,
+                error = ErrorDto(code = "FORBIDDEN", message = "You are not a participant of this chat")
+            )
+            return
+        }
+
+        // Cancel any existing auto-stop timer for this user in this chat
+        typingTimers[chatId]?.remove(userId)?.cancel(false)
+
+        if (isTyping) {
+            val future = taskScheduler.schedule(
+                { handleTypingEvent(session, chatId, false) },
+                Instant.now().plusSeconds(3)
+            )
+            typingTimers.computeIfAbsent(chatId) { ConcurrentHashMap() }[userId] = future!!
+        } else {
+            typingTimers[chatId]?.let { if (it.isEmpty()) typingTimers.remove(chatId) }
+        }
+
+        // Broadcast to all OTHER participants in the chat
+        val chatSessions = connectionLock.read { chatToSessions[chatId]?.toList() ?: emptyList() }
+        val message = OutgoingWebSocketMessage(
+            type = OutgoingWebSocketMessageType.TYPING_INDICATOR,
+            payload = objectMapper.writeValueAsString(
+                TypingIndicatorDto(
+                    chatId = chatId,
+                    userId = userId,
+                    username = userSession.username,
+                    isTyping = isTyping
+                )
+            )
+        )
+
+        chatSessions.forEach { sessionId ->
+            val targetSession = connectionLock.read { sessions[sessionId] } ?: return@forEach
+            if (targetSession.userId != userId) {
+                sendToUser(userId = targetSession.userId, message = message)
+            }
+        }
+    }
+
     /**
      * Utility class for managing WebSocket sessions for users.
      * @param userId The user ID associated with the WebSocket session.
+     * @param username The username associated with the WebSocket session.
      * @param session The WebSocket session.
      * */
     private data class UserSession(
         val userId: UserId,
+        val username: String,
         val session: WebSocketSession,
         val lastPongTimestamp: Long = System.currentTimeMillis()
     )

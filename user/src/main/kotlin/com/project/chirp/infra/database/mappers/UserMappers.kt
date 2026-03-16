@@ -9,5 +9,6 @@ fun UserEntity.toUser(): User {
         email = email,
         username = username,
         hasEmailVerified = hasVerifiedEmail,
+        typingIndicatorsEnabled = typingIndicatorsEnabled,
     )
 }

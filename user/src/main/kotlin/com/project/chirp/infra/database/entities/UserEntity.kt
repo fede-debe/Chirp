@@ -35,6 +35,8 @@ class UserEntity(
     var hashedPassword: String,
     @Column(nullable = false)
     var hasVerifiedEmail: Boolean = false,
+    @Column(nullable = false, columnDefinition = "boolean not null default true")
+    var typingIndicatorsEnabled: Boolean = true,
     @CreationTimestamp
     var createdAt: Instant = Instant.now(),
     @UpdateTimestamp

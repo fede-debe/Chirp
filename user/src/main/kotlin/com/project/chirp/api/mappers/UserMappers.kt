@@ -24,5 +24,6 @@ fun User.toUserDto(): UserDto {
         email = email,
         username = username,
         hasEmailVerified = hasEmailVerified,
+        typingIndicatorsEnabled = typingIndicatorsEnabled,
     )
 }

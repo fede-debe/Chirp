@@ -225,6 +225,10 @@ class ChatService(
         )
     }
 
+    fun getParticipantUsername(userId: UserId): String? {
+        return chatParticipantRepository.findByIdOrNull(userId)?.username
+    }
+
     /***
      * @param chatId: The ID of the chat.
      * @return The latest chat message for the chat.

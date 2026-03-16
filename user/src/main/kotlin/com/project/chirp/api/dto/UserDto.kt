@@ -7,4 +7,5 @@ data class UserDto(
     val email: String,
     val username: String,
     val hasEmailVerified: Boolean,
+    val typingIndicatorsEnabled: Boolean,
 )

@@ -15,9 +15,9 @@ nginx:
 
 chirp:
   email:
-    url: "https://chirp.crea.com" # URL to deploy the app.
+    url: "https://chirp.adamapp.dev" # URL to deploy the app.
   rate-limit:
     ip:
       apply-limit: true
   web-socket:
-    allowed-origin: "https://chirp.crea.com"
+    allowed-origin: "https://chirp.adamapp.dev"

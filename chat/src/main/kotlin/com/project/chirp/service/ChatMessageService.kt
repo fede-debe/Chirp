@@ -33,6 +33,7 @@ import java.util.*
  * @param chatParticipantRepository: Repository for managing chat participant entities.
  * @param applicationEventPublisher: Publisher for application events.
  * @param eventPublisher: Publisher for RabbitMQ events.
+ * @param messageCacheEvictionHelper: Helper for evicting cached messages. It needs a separate class to work with caching and can't be declared here.
  *
  * @see sendMessage Sends a chat message.
  * @see deleteMessage Deletes a chat message.
@@ -44,7 +45,8 @@ class ChatMessageService(
     private val chatMessageAttachmentRepository: ChatMessageAttachmentRepository,
     private val chatParticipantRepository: ChatParticipantRepository,
     private val applicationEventPublisher: ApplicationEventPublisher,
-    private val eventPublisher: EventPublisher
+    private val eventPublisher: EventPublisher,
+    private val messageCacheEvictionHelper: MessageCacheEvictionHelper
 ) {
     /***
      * Sends a chat message, optionally with file attachments.
@@ -58,7 +60,7 @@ class ChatMessageService(
      *   will broadcast this message via all active web socket connections to all participants of the
      *   chat. This means the sender of the message will receive the message back from the server if
      *   sent successfully. This ChatMessageId will be client side generated. It can be used by the
-     *   client to compare the sent message with the received message and be sure delivery was successful.
+     *   client to compare the message sent with the received message and be sure delivery was successful.
      * @param attachmentUrls: Optional list of file attachment inputs to associate with the message.
      *   Each entry must reference a file that has already been uploaded to Supabase storage via
      *   the signed URL endpoint. A maximum of 10 attachments is enforced to prevent abuse.
@@ -167,14 +169,6 @@ class ChatMessageService(
             )
         )
 
-        evictMessagesCache(message.chatId)
-    }
-
-    @CacheEvict(
-        value = ["messages"],
-        key = "#chatId",
-    )
-    fun evictMessagesCache(chatId: ChatId) {
-        // NO-OP: Let Spring handle the cache evict
+        messageCacheEvictionHelper.evictMessagesCache(message.chatId)
     }
 }

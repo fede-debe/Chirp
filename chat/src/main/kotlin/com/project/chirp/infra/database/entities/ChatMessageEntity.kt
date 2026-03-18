@@ -16,7 +16,7 @@ import java.time.Instant
  * @param chat: The chat associated with the message.
  * @param sender: The participant who sent the message.
  * @param createdAt: The creation time of the chat message.
- * @param attachments: The file attachments linked to this message. Declared as LAZY so attachments
+ * @param attachments The file attachments linked to this message. Declared as LAZY so attachments
  *   are not loaded unless explicitly JOIN FETCHed — this prevents loading attachment data in
  *   contexts where only the message text is needed. CascadeType.ALL and orphanRemoval = true
  *   ensure attachments are persisted and removed together with their parent message.
@@ -36,7 +36,6 @@ import java.time.Instant
 )
 class ChatMessageEntity(
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     var id: ChatMessageId? = null,
     @Column(nullable = false)
     var content: String,

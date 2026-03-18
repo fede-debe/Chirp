@@ -23,6 +23,7 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.*
 
 /***
  * Service for managing chat messages.
@@ -101,7 +102,7 @@ class ChatMessageService(
          */
         val savedMessage = chatMessageRepository.saveAndFlush(
             ChatMessageEntity(
-                id = messageId,
+                id = messageId ?: UUID.randomUUID(),
                 content = content.trim(),
                 chatId = chatId,
                 chat = chat,

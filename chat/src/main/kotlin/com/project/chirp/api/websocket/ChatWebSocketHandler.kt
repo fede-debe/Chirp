@@ -304,27 +304,55 @@ class ChatWebSocketHandler(
     }
 
     /***
+     * Updates the chat-related maps for a list of users.
+     * @param chatId The ID of the chat.
+     * @param userIds The IDs of the users.
+     * */
+    private fun updateChatForUsers(
+        chatId: ChatId,
+        userIds: List<UserId>
+    ) {
+        connectionLock.write {
+            userIds.forEach { userId ->
+                userChatIds.compute(userId) { _, chatIds ->
+                    (chatIds ?: mutableSetOf()).apply {
+                        add(chatId)
+                    }
+                }
+
+                userToSessions[userId]?.forEach { sessionId ->
+                    chatToSessions.compute(chatId) { _, sessions ->
+                        (sessions ?: mutableSetOf()).apply { add(sessionId) }
+                    }
+                }
+            }
+        }
+    }
+
+    /***
+     * Handles a chat creation event.
+     * @param event The ChatCreatedEvent containing the chat ID and participant IDs.
+     * Updates the session maps for the chat participants.
+     * */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onChatCreated(event: ChatCreatedEvent) {
+        updateChatForUsers(
+            chatId = event.chatId,
+            userIds = event.participantIds
+        )
+    }
+
+    /***
      * Handles a chat participants joined event.
      * @param event The ChatParticipantsJoinedEvent containing the chat ID and user IDs.
      * Broadcasts the message to related chats and updates the session maps.
      * */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun onJoinChat(event: ChatParticipantsJoinedEvent) {
-        connectionLock.write {
-            event.userIds.forEach { userId ->
-                userChatIds.compute(userId) { _, chatIds ->
-                    (chatIds ?: mutableSetOf()).apply {
-                        add(event.chatId)
-                    }
-                }
-
-                userToSessions[userId]?.forEach { sessionId ->
-                    chatToSessions.compute(event.chatId) { _, sessions ->
-                        (sessions ?: mutableSetOf()).apply { add(sessionId) }
-                    }
-                }
-            }
-        }
+        updateChatForUsers(
+            chatId = event.chatId,
+            userIds = event.userIds.toList()
+        )
 
         broadcastToChat(
             chatId = event.chatId,

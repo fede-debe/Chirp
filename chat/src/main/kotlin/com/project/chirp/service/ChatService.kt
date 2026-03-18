@@ -2,10 +2,7 @@ package com.project.chirp.service
 
 import com.project.chirp.api.dto.ChatMessageDto
 import com.project.chirp.api.mappers.toChatMessageDto
-import com.project.chirp.domain.event.ChatDeletedEvent
-import com.project.chirp.domain.event.ChatParticipantLeftEvent
-import com.project.chirp.domain.event.ChatParticipantsJoinedEvent
-import com.project.chirp.domain.event.ParticipantRemovedByAdminEvent
+import com.project.chirp.domain.event.*
 import com.project.chirp.domain.exception.*
 import com.project.chirp.domain.models.Chat
 import com.project.chirp.domain.models.ChatMessage
@@ -147,7 +144,14 @@ class ChatService(
                 creator = creator,
                 participants = setOf(creator) + otherParticipants
             )
-        ).toChat(lastMessage = null)
+        ).toChat(lastMessage = null).also { entity ->
+            applicationEventPublisher.publishEvent(
+                ChatCreatedEvent(
+                    chatId = entity.id,
+                    participantIds = entity.participants.map { it.userId }
+                )
+            )
+        }
     }
 
     @Transactional

@@ -41,7 +41,7 @@ class SecurityConfig {
      * .exceptionHandling -> HttpStatus.UNAUTHORIZED will be the status if something goes wrong within the authorizeHttpRequests (our policy)
      */
     @Bean
-    fun filterChain(httpSecurity: HttpSecurity, jwtAuthFilter: JwtAuthFilter): SecurityFilterChain {
+    fun filterChain(httpSecurity: HttpSecurity, jwtAuthFilter: JwtAuthFilter, apiKeyFilter: ApiKeyFilter): SecurityFilterChain {
         return httpSecurity
             .csrf { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
@@ -59,6 +59,7 @@ class SecurityConfig {
                     .anyRequest()
                     .authenticated()
             }
+            .addFilterBefore(apiKeyFilter, JwtAuthFilter::class.java)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
             .exceptionHandling { configurer ->
                 configurer

@@ -43,3 +43,4 @@ out/
 .kotlin
 
 app/src/main/resources/firebase-credentials
+application-local.yml

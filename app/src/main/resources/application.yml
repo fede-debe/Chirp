@@ -110,3 +110,7 @@ supabase:
 firebase:
   credentials-path: "classpath:firebase-credentials/chirp-firebase-adminsdk.json"
 
+app:
+  api:
+    key: ${API_KEY}
+

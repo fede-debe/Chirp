@@ -59,7 +59,7 @@ class SecurityConfig {
                     .anyRequest()
                     .authenticated()
             }
-            .addFilterBefore(apiKeyFilter, JwtAuthFilter::class.java)
+            .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter::class.java)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
             .exceptionHandling { configurer ->
                 configurer

@@ -4,8 +4,6 @@ import com.project.chirp.domain.events.user.UserEvent
 import com.project.chirp.domain.exception.*
 import com.project.chirp.domain.model.AuthenticatedUser
 import com.project.chirp.domain.model.User
-import com.project.chirp.domain.type.UserId
-import com.project.chirp.infra.database.entities.RefreshTokenEntity
 import com.project.chirp.infra.database.entities.UserEntity
 import com.project.chirp.infra.database.mappers.toUser
 import com.project.chirp.infra.database.repositories.RefreshTokenRepository
@@ -15,12 +13,13 @@ import com.project.chirp.infra.security.PasswordEncoder
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.security.MessageDigest
-import java.time.Instant
-import java.util.*
 
 /***
- * Service for managing authentication-related operations.
+ * Service for managing email/password authentication.
+ *
+ * Token issuance and refresh-token storage are delegated to [AuthTokenService] so that login,
+ * refresh, and social sign-in all share the exact same token-issuing path.
+ *
  * @see register: Registers a new user.
  * @see login: Authenticates a user and returns an AuthenticatedUser object.
  * @see refresh: Refreshes an access token using a valid refresh token.
@@ -29,7 +28,8 @@ import java.util.*
  * @param userRepository: Repository for managing user data.
  * @param passwordEncoder: Encoder for hashing passwords.
  * @param jwtService: Service for generating and validating JWT tokens.
- * @param refreshTokenRepository: Repository for managing refresh tokens.z
+ * @param refreshTokenRepository: Repository for managing refresh tokens.
+ * @param authTokenService: Shared issuer of access/refresh tokens (also used by social sign-in).
  */
 @Service
 class AuthService(
@@ -38,7 +38,8 @@ class AuthService(
     private val jwtService: JwtService,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val emailVerificationService: EmailVerificationService,
-    private val eventPublisher: EventPublisher
+    private val eventPublisher: EventPublisher,
+    private val authTokenService: AuthTokenService,
 ) {
 
     /***
@@ -89,8 +90,8 @@ class AuthService(
      * @param email The email of the user.
      * @param password The password of the user.
      * @return An AuthenticatedUser object containing the user, access token, and refresh token.
-     * @throws InvalidCredentialsException If the email or password is invalid.
-     * @throws UserNotFoundException If the user is not found.
+     * @throws InvalidCredentialsException If the email or password is invalid, or the account is
+     *   a social (password-less) account.
      */
     fun login(
         email: String,
@@ -99,7 +100,12 @@ class AuthService(
         val user = userRepository.findByEmail(email.trim())
             ?: throw InvalidCredentialsException()
 
-        if (!passwordEncoder.matches(password, user.hashedPassword)) {
+        /** Social accounts have no password — they cannot log in via this endpoint. Treated as
+         *  invalid credentials so we don't reveal which accounts are social. */
+        val hashedPassword = user.hashedPassword
+            ?: throw InvalidCredentialsException()
+
+        if (!passwordEncoder.matches(password, hashedPassword)) {
             throw InvalidCredentialsException()
         }
 
@@ -112,30 +118,15 @@ class AuthService(
             throw EmailNotVerifiedException(verificationEmailResent = false)
         }
 
-        /*** Ensure that the user has an ID before proceeding on creating tokens */
-        return user.id?.let { userId ->
-            val accessToken = jwtService.generateAccessToken(userId)
-            val refreshToken = jwtService.generateRefreshToken(userId)
-
-            storeRefreshToken(userId, refreshToken)
-
-            AuthenticatedUser(
-                user = user.toUser(),
-                accessToken = accessToken,
-                refreshToken = refreshToken
-            )
-        } ?: throw UserNotFoundException()
+        return authTokenService.issueTokens(user.toUser())
     }
 
     /**
-     * Refreshes an access token using a valid refresh token.
+     * Refreshes an access token using a valid refresh token, rotating the refresh token.
      * @param refreshToken The refresh token to use for refreshing.
      * @return An AuthenticatedUser object containing the refreshed access token and refresh token.
      * @throws InvalidTokenException If the refresh token is invalid.
      * @throws UserNotFoundException If the user associated with the refresh token is not found.
-     *
-     * Using @Transactional to ensure atomicity of operations, if all the operations succeed, the transaction is committed and the changes are persisted.
-     * If any operation fails, the transaction is rolled back and no changes are persisted.
      */
     @Transactional
     fun refresh(refreshToken: String): AuthenticatedUser {
@@ -149,62 +140,29 @@ class AuthService(
         val user = userRepository.findByIdOrNull(userId)
             ?: throw UserNotFoundException()
 
-        val hashed = hashToken(refreshToken)
+        val hashed = authTokenService.hashToken(refreshToken)
 
-        return user.id?.let { userId ->
-            refreshTokenRepository.findByUserIdAndHashedToken(
-                userId = userId,
-                hashedToken = hashed
-            ) ?: throw InvalidTokenException("Invalid refresh token")
+        refreshTokenRepository.findByUserIdAndHashedToken(
+            userId = userId,
+            hashedToken = hashed
+        ) ?: throw InvalidTokenException("Invalid refresh token")
 
-            refreshTokenRepository.deleteByUserIdAndHashedToken(
-                userId = userId,
-                hashedToken = hashed
-            )
+        refreshTokenRepository.deleteByUserIdAndHashedToken(
+            userId = userId,
+            hashedToken = hashed
+        )
 
-            val newAccessToken = jwtService.generateAccessToken(userId)
-            val newRefreshToken = jwtService.generateRefreshToken(userId)
-
-            storeRefreshToken(userId, newRefreshToken)
-
-            AuthenticatedUser(
-                user = user.toUser(),
-                accessToken = newAccessToken,
-                refreshToken = newRefreshToken
-            )
-        } ?: throw UserNotFoundException()
+        return authTokenService.issueTokens(user.toUser())
     }
 
     /***
      * Logs out a user by invalidating their refresh token.
      * @param refreshToken The refresh token to invalidate.
-     * @throws InvalidTokenException If the refresh token is invalid.
-     * @throws UserNotFoundException If the user associated with the refresh token is not found.
      */
     @Transactional
     fun logout(refreshToken: String) {
         val userId = jwtService.getUserIdFromToken(refreshToken)
-        val hashed = hashToken(refreshToken)
+        val hashed = authTokenService.hashToken(refreshToken)
         refreshTokenRepository.deleteByUserIdAndHashedToken(userId, hashed)
-    }
-
-    private fun storeRefreshToken(userId: UserId, token: String) {
-        val hashed = hashToken(token)
-        val expiryMs = jwtService.refreshTokenValidityMs
-        val expiresAt = Instant.now().plusMillis(expiryMs)
-
-        refreshTokenRepository.save(
-            RefreshTokenEntity(
-                userId = userId,
-                expiresAt = expiresAt,
-                hashedToken = hashed
-            )
-        )
-    }
-
-    private fun hashToken(token: String): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val hashBytes = digest.digest(token.encodeToByteArray())
-        return Base64.getEncoder().encodeToString(hashBytes)
     }
 }

@@ -27,6 +27,9 @@ dependencies {
     runtimeOnly(libs.jwt.impl)
     runtimeOnly(libs.jwt.jackson)
 
+    // Google/Apple ID token verification against provider JWKS
+    implementation(libs.nimbus.jose.jwt)
+
     testImplementation(kotlin("test"))
 }
 

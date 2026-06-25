@@ -1,5 +1,6 @@
 package com.project.chirp.infra.database.entities
 
+import com.project.chirp.domain.model.AuthProvider
 import com.project.chirp.domain.type.UserId
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
@@ -19,7 +20,15 @@ import java.time.Instant
     schema = "user_service",
     indexes = [
         Index(name = "idx_users_email", columnList = "email"),
-        Index(name = "idx_users_username", columnList = "username")
+        Index(name = "idx_users_username", columnList = "username"),
+        // Resolve a returning social user by their stable provider id. Unique so a provider
+        // account links to at most one user. (provider_id is NULL for email accounts, and
+        // Postgres treats NULLs as distinct, so many email rows coexist under this index.)
+        Index(
+            name = "idx_users_auth_provider_provider_id",
+            columnList = "auth_provider,provider_id",
+            unique = true
+        ),
     ]
 )
 
@@ -31,8 +40,15 @@ class UserEntity(
     var email: String,
     @Column(nullable = false, unique = true)
     var username: String,
-    @Column(nullable = false)
-    var hashedPassword: String,
+    // Nullable: social (Google/Apple) accounts are password-less.
+    @Column(nullable = true)
+    var hashedPassword: String? = null,
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", nullable = false, length = 20)
+    var authProvider: AuthProvider = AuthProvider.EMAIL,
+    // The provider's stable user id (`sub`); NULL for email/password accounts.
+    @Column(name = "provider_id")
+    var providerId: String? = null,
     @Column(nullable = false)
     var hasVerifiedEmail: Boolean = false,
     @Column(nullable = false, columnDefinition = "boolean not null default true")

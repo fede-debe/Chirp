@@ -90,6 +90,15 @@ class AuthExceptionHandler {
         "message" to e.message
     )
 
+    @ExceptionHandler(PasswordLoginUnavailableException::class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    fun onPasswordLoginUnavailable(
+        e: PasswordLoginUnavailableException
+    ) = mapOf(
+        "code" to "PASSWORD_LOGIN_UNAVAILABLE",
+        "message" to e.message
+    )
+
     @ExceptionHandler(RateLimitException::class)
     @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
     fun onRateLimitExceeded(

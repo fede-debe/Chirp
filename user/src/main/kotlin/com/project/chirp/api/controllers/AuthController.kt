@@ -9,6 +9,7 @@ import com.project.chirp.infra.rate_limiting.EmailRateLimiter
 import com.project.chirp.service.AuthService
 import com.project.chirp.service.EmailVerificationService
 import com.project.chirp.service.PasswordResetService
+import com.project.chirp.service.SocialAuthService
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 import java.util.concurrent.TimeUnit
@@ -30,7 +31,8 @@ class AuthController(
     private val authService: AuthService,
     private val emailVerificationService: EmailVerificationService,
     private val passwordResetService: PasswordResetService,
-    private val emailRateLimiter: EmailRateLimiter
+    private val emailRateLimiter: EmailRateLimiter,
+    private val socialAuthService: SocialAuthService
 ) {
 
     /*** Registers a new user.
@@ -46,6 +48,47 @@ class AuthController(
         @Valid @RequestBody body: RegisterRequest
     ): UserDto {
         return authService.register(email = body.email, username = body.username, password = body.password).toUserDto()
+    }
+
+    /*** Authenticates a user via Google sign-in and returns the same AuthenticatedUserDto as login.
+     * Public (no Bearer required) but IP rate limited like the other auth endpoints. The Google
+     * ID token is verified server-side; on success the client uses the normal Bearer + refresh flow.
+     * @Valid @RequestBody body: { idToken, rawNonce }.
+     */
+    @PostMapping("/google")
+    @IpRateLimit(
+        requests = 10,
+        duration = 1L,
+        unit = TimeUnit.HOURS
+    )
+    fun signInWithGoogle(
+        @Valid @RequestBody body: GoogleSignInRequest
+    ): AuthenticatedUserDto {
+        return socialAuthService.signInWithGoogle(
+            idToken = body.idToken,
+            rawNonce = body.rawNonce
+        ).toAuthenticatedUserDto()
+    }
+
+    /*** Authenticates a user via Apple sign-in and returns the same AuthenticatedUserDto as login.
+     * Public (no Bearer required) but IP rate limited. The Apple identity token is verified
+     * server-side. `fullName` is only present on the first authorization and is used for username creation.
+     * @Valid @RequestBody body: { identityToken, rawNonce, fullName? }.
+     */
+    @PostMapping("/apple")
+    @IpRateLimit(
+        requests = 10,
+        duration = 1L,
+        unit = TimeUnit.HOURS
+    )
+    fun signInWithApple(
+        @Valid @RequestBody body: AppleSignInRequest
+    ): AuthenticatedUserDto {
+        return socialAuthService.signInWithApple(
+            identityToken = body.identityToken,
+            rawNonce = body.rawNonce,
+            fullName = body.fullName
+        ).toAuthenticatedUserDto()
     }
 
     /*** Authenticates a user and returns an AuthenticatedUser object.

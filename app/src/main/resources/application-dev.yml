@@ -1,4 +1,11 @@
 spring:
+  # Dev-only: reach Supabase via the IPv4 session-mode pooler (the direct db.<ref> host is
+  # IPv6-only and unroutable on many networks). Session mode (port 5432) — NOT transaction mode
+  # (6543) — because Hibernate/JDBC use server-side prepared statements (prepareThreshold in base
+  # config), which the transaction pooler does not support. password/driver/hikari inherit from base.
+  datasource:
+    url: jdbc:postgresql://aws-1-eu-west-1.pooler.supabase.com:5432/postgres
+    username: postgres.yvmwtlxnxywgbhndamjs
   jpa:
     hibernate:
       ddl-auto: update

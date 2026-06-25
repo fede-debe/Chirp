@@ -95,6 +95,16 @@ chirp:
       expiry-hours: 24
     reset-password:
       expiry-minutes: 30
+  social:
+    google:
+      # Comma-separated allowlist of accepted Google OAuth client IDs (android, ios, web/server).
+      # An ID token's `aud` must match one of these. Empty default lets the app boot without it;
+      # the /api/auth/google endpoint then fails until configured.
+      client-ids: ${GOOGLE_CLIENT_IDS:}
+    apple:
+      # Comma-separated allowlist of accepted Apple audiences = the iOS app bundle id(s).
+      # Apple sign-in is iOS-only, so no Service ID is needed.
+      client-ids: ${APPLE_CLIENT_IDS:}
 
 nginx:
   trusted-ips:

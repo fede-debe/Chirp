@@ -3,6 +3,7 @@ package com.project.chirp.service
 import com.project.chirp.domain.events.user.UserEvent
 import com.project.chirp.domain.exception.InvalidCredentialsException
 import com.project.chirp.domain.exception.InvalidTokenException
+import com.project.chirp.domain.exception.PasswordLoginUnavailableException
 import com.project.chirp.domain.exception.SamePasswordException
 import com.project.chirp.domain.exception.UserNotFoundException
 import com.project.chirp.domain.type.UserId
@@ -50,6 +51,10 @@ class PasswordResetService(
         /** We don't throw an exception for security reasons, this is because we don't want to leak information about the existence of a user */
         val user = userRepository.findByEmail(email) ?: return
 
+        /** Social, password-less accounts have nothing to reset — no-op (also avoids creating a
+         *  password for an account that intentionally has none). */
+        if (user.hashedPassword == null) return
+
         /** If the user is found, we invalidate any active password reset tokens for that user */
         passwordResetTokenRepository.invalidateActiveTokensForUser(user)
 
@@ -85,7 +90,8 @@ class PasswordResetService(
 
         val user = resetToken.user
 
-        if (passwordEncoder.matches(newPassword, user.hashedPassword)) {
+        val currentHashedPassword = user.hashedPassword
+        if (currentHashedPassword != null && passwordEncoder.matches(newPassword, currentHashedPassword)) {
             throw SamePasswordException()
         }
 
@@ -115,7 +121,11 @@ class PasswordResetService(
         val user = userRepository.findByIdOrNull(userId)
             ?: throw UserNotFoundException()
 
-        if (!passwordEncoder.matches(oldPassword, user.hashedPassword)) {
+        /** Social, password-less accounts cannot change a password they don't have. */
+        val currentHashedPassword = user.hashedPassword
+            ?: throw PasswordLoginUnavailableException()
+
+        if (!passwordEncoder.matches(oldPassword, currentHashedPassword)) {
             throw InvalidCredentialsException()
         }
 

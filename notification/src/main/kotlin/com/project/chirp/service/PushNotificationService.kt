@@ -125,6 +125,14 @@ class PushNotificationService(
             .filter { it.userId != senderUserId }
             .map { it.toDeviceToken() }
 
+        /** After excluding the sender's own device(s) there may be nobody left to notify (e.g. the
+         *  sender is the only participant with a registered token). Firebase rejects an empty send,
+         *  so return early instead of building an empty notification. */
+        if (recipients.isEmpty()) {
+            logger.info("No recipients to notify for chat $chatId after excluding the sender")
+            return
+        }
+
         val notification = PushNotification(
             title = "New message from $senderUsername",
             recipients = recipients,

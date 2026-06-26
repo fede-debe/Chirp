@@ -92,6 +92,9 @@ class EmailVerificationService(
         userRepository.save(
             verificationToken.user.apply {
                 this.hasVerifiedEmail = true
+                // The chat participant mirror is provisioned here (once), so a later social
+                // sign-in on this account won't re-publish UserEvent.Verified.
+                this.chatParticipantProvisioned = true
             }
         ).toUser()
 

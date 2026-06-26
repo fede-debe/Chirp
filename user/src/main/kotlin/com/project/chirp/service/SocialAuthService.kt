@@ -74,22 +74,44 @@ class SocialAuthService(
     }
 
     /***
-     * Account resolution (security-critical):
-     * 1. Found by (provider, providerId) → existing social account, just issue tokens.
-     * 2. Else by verified email:
-     *    - existing & email already verified → link the provider, issue tokens.
-     *    - existing & email NOT verified → account takeover: mark verified, drop the password,
-     *      link provider, invalidate existing sessions, create the chat mirror. This stops anyone
-     *      who pre-registered the email with a chosen password from retaining access, now that the
-     *      provider has proven ownership of the email.
-     * 3. No account → create a password-less, already-verified account with a generated username.
+     * Resolves the account for a verified social identity, provisions the chat-module participant
+     * mirror once, and issues this backend's tokens.
      *
-     * Creating/taking-over publishes UserEvent.Verified so the chat module creates the participant
-     * mirror (idempotent; sends no email).
+     * The mirror is created by the chat module when it receives [UserEvent.Verified]. We publish
+     * that event exactly once per user — the first social sign-in — gated by
+     * [UserEntity.chatParticipantProvisioned], mirroring how email verification provisions the
+     * mirror a single time. This both creates the mirror for brand-new social users and back-fills
+     * any user whose flag is still false (e.g. linked to an already-verified account, or a returning
+     * login from before this flag existed); on every later login the flag is set, so nothing is
+     * published. Applies to both Google and Apple, which share this path. Without it, a social user
+     * with no mirror can authenticate but cannot be added to / create chats.
      */
     private fun resolveAndIssue(identity: VerifiedSocialIdentity): AuthenticatedUser {
+        val user = resolveAccount(identity)
+        if (!user.chatParticipantProvisioned) {
+            publishVerified(user)
+            user.chatParticipantProvisioned = true
+            userRepository.save(user)
+        }
+        return authTokenService.issueTokens(user.toUser())
+    }
+
+    /***
+     * Account resolution (security-critical):
+     * 1. Found by (provider, providerId) → existing social account.
+     * 2. Else by verified email:
+     *    - existing & email already verified → link the provider.
+     *    - existing & email NOT verified → account takeover: mark verified, drop the password,
+     *      link provider, invalidate existing sessions. This stops anyone who pre-registered the
+     *      email with a chosen password from retaining access, now that the provider has proven
+     *      ownership of the email.
+     * 3. No account → create a password-less, already-verified account with a generated username.
+     *
+     * Returns the resolved [UserEntity]; the caller publishes UserEvent.Verified for it.
+     */
+    private fun resolveAccount(identity: VerifiedSocialIdentity): UserEntity {
         userRepository.findByAuthProviderAndProviderId(identity.provider, identity.providerId)
-            ?.let { return authTokenService.issueTokens(it.toUser()) }
+            ?.let { return it }
 
         // Beyond this point we link or create by email, so the provider MUST give a verified email.
         val email = identity.email?.trim()
@@ -109,15 +131,15 @@ class SocialAuthService(
         return createAccount(identity, email)
     }
 
-    private fun linkProvider(user: UserEntity, identity: VerifiedSocialIdentity): AuthenticatedUser {
+    private fun linkProvider(user: UserEntity, identity: VerifiedSocialIdentity): UserEntity {
         user.authProvider = identity.provider
         user.providerId = identity.providerId
         val saved = userRepository.save(user)
         logger.info("Linked ${identity.provider} to existing verified account ${saved.id}")
-        return authTokenService.issueTokens(saved.toUser())
+        return saved
     }
 
-    private fun takeOverAccount(user: UserEntity, identity: VerifiedSocialIdentity): AuthenticatedUser {
+    private fun takeOverAccount(user: UserEntity, identity: VerifiedSocialIdentity): UserEntity {
         user.hasVerifiedEmail = true
         user.hashedPassword = null
         user.authProvider = identity.provider
@@ -125,12 +147,11 @@ class SocialAuthService(
         val saved = userRepository.save(user)
         // Invalidate any sessions issued before takeover.
         refreshTokenRepository.deleteByUserId(saved.id!!)
-        publishVerified(saved)
         logger.info("Took over unverified account ${saved.id} via ${identity.provider}")
-        return authTokenService.issueTokens(saved.toUser())
+        return saved
     }
 
-    private fun createAccount(identity: VerifiedSocialIdentity, email: String): AuthenticatedUser {
+    private fun createAccount(identity: VerifiedSocialIdentity, email: String): UserEntity {
         val saved = userRepository.saveAndFlush(
             UserEntity(
                 email = email,
@@ -141,9 +162,8 @@ class SocialAuthService(
                 hasVerifiedEmail = true,
             )
         )
-        publishVerified(saved)
         logger.info("Created social account ${saved.id} via ${identity.provider}")
-        return authTokenService.issueTokens(saved.toUser())
+        return saved
     }
 
     private fun publishVerified(user: UserEntity) {

@@ -51,6 +51,11 @@ class UserEntity(
     var providerId: String? = null,
     @Column(nullable = false)
     var hasVerifiedEmail: Boolean = false,
+    // Whether the chat-module participant mirror has been provisioned for this user. Set once —
+    // on email verification or the first social sign-in — so UserEvent.Verified is published only
+    // the first time, not on every subsequent login.
+    @Column(name = "chat_participant_provisioned", nullable = false, columnDefinition = "boolean not null default false")
+    var chatParticipantProvisioned: Boolean = false,
     @Column(nullable = false, columnDefinition = "boolean not null default true")
     var typingIndicatorsEnabled: Boolean = true,
     @CreationTimestamp

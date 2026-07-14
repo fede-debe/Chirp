@@ -47,3 +47,8 @@ out/
 
 app/src/main/resources/firebase-credentials
 application-local.yml
+
+# Local environment files — real credentials. Never commit.
+.env
+.env.*
+!.env.example

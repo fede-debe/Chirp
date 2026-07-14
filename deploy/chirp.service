@@ -1,0 +1,31 @@
+# Backend systemd unit (production) — TEMPLATE.
+#
+# Rename to <yourapp>.service and install on the server:
+#   sudo cp deploy/chirp.service /etc/systemd/system/<yourapp>.service
+#   sudo systemctl daemon-reload && sudo systemctl restart <yourapp>.service
+#
+# Keep this in the repo. The active Spring profile is the single most important production setting,
+# and a unit that only exists on the box is invisible to review and easy to lose on a rebuild.
+#
+# `-Dspring.profiles.active=prod` is LOAD-BEARING: the base application.yml points at the DEV backing
+# services and application-prod.yml overrides them. Spring has no default profile, so without this flag
+# the app would silently run production against the dev database. ActiveProfileGuard now refuses to boot
+# in that case — a mistake fails loudly instead of corrupting data — but the flag still has to be right.
+#
+# Secrets come from EnvironmentFile and are NOT stored in this repo.
+
+[Unit]
+Description=Chirp
+After=network.target
+
+[Service]
+User=admin
+EnvironmentFile=/etc/default/chirp-env
+# -Xmx caps the heap: on a small VPS an unbounded JVM with no swap OOM-spirals the box.
+ExecStart=/usr/bin/java -Xmx2g -jar -Dspring.profiles.active=prod /opt/chirp/app.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
